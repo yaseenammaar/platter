@@ -170,7 +170,7 @@ function QuestionCard({ ask, onDone }: { ask: Ask; onDone: () => void }) {
   );
 }
 
-/** "Hey, ask Mubeen if…" — for humans; agents do the same with ask_teammate. */
+/** "Ask a teammate…" — for humans; agents do the same with ask_teammate. */
 function CheckIn({ onSent }: { onSent: () => void }) {
   const { me, members } = useApp();
   const others = members.filter((m) => m.id !== me.id && m.status === 'active');

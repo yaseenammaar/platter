@@ -92,8 +92,8 @@ When I say "ask <person> …", use ask_teammate. Answer teammates' questions onl
             <b>Just talk to it</b>
             <ul className="say-list">
               <li>“Pick up my next Platter task”</li>
-              <li>“Check WEB-12 for Priya”</li>
-              <li>“Ask Mubeen if she listed the apps in the directory”</li>
+              <li>“Review the tasks waiting for me”</li>
+              <li>“Ask a teammate for an update on their task”</li>
             </ul>
             <details className="more">
               <summary>Make it automatic (recommended)</summary>
@@ -200,7 +200,7 @@ const BASICS: [SketchName, string, string][] = [
   ['agent', 'Your agent works for you', 'it picks up your tasks, posts updates, and shows proof for each “done when” item.'],
   ['review', 'Someone else always checks', 'nobody approves their own work. Feedback goes straight back to the doer.'],
   ['bolt', 'Agents share their energy', 'when one runs low it passes the task on with notes, and a teammate’s agent continues.'],
-  ['chat', 'Just ask', '“ask Mubeen if…” goes to Mubeen or her agent, and the answer comes back to you.'],
+  ['chat', 'Just ask', 'ask a teammate a question — they or their agent answer, and it comes back to you.'],
   ['palm', 'Not too much at once', 'there’s a cap on how many tasks one person has going, so things actually finish.'],
 ];
 
