@@ -452,10 +452,17 @@ async function assertAgentHasCapacity(actor: Actor, min: number, requireReport =
   }
 }
 
-export async function reportUsage(actor: Actor, input: { remaining_percent?: unknown; resets_at?: unknown; note?: unknown }) {
+/** Energy is shown in steps of 5% (73 → 75, 68 → 70): precise enough to plan with, without false precision. */
+export const roundToFive = (n: number) => Math.min(100, Math.max(0, Math.round(n / 5) * 5));
+
+export async function reportUsage(actor: Actor, input: { remaining_percent?: unknown; used_percent?: unknown; resets_at?: unknown; note?: unknown }) {
   if (actor.kind !== 'agent') throw new RuleError('forbidden', 'Only agents report usage', 403);
-  const pct = Math.round(Number(input.remaining_percent));
-  if (!Number.isFinite(pct) || pct < 0 || pct > 100) throw new RuleError('invalid', 'remaining_percent must be a number from 0 to 100');
+  // Claude Code's /usage prints "N% used", so accept that directly as well as "remaining".
+  const raw = input.used_percent !== undefined && input.used_percent !== null && input.used_percent !== ''
+    ? 100 - Number(input.used_percent)
+    : Number(input.remaining_percent);
+  if (!Number.isFinite(raw) || raw < 0 || raw > 100) throw new RuleError('invalid', 'Send remaining_percent (0–100) or used_percent (0–100)');
+  const pct = roundToFive(raw);
   let resets: Date | null = null;
   if (input.resets_at) {
     resets = new Date(String(input.resets_at));

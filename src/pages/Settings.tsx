@@ -28,12 +28,21 @@ export function SettingsPage() {
 }
 
 // ---------- My agent ----------
+
+/** What the recurring check-in routine does. Shared by both ways of scheduling it. */
+export const ROUTINE_PROMPT = `Platter check-in routine.
+1. Energy: run \`claude -p "/usage"\` in a shell. Find the limit with the highest "% used" and call the Platter tool report_usage with that as used_percent (and its reset time as resets_at). Platter rounds to the nearest 5%.
+2. Messages: call Platter check_inbox.
+   - Questions for me: if you can answer from Platter itself (get_task, list_my_tasks, the task's progress), answer with answer_question and say what you checked. If you're not sure, leave it for me. Never guess.
+   - Answers to my questions: collect them.
+3. Finish with a short summary for me: new answers, questions you answered, and questions waiting on me. If nothing is new, just say "Nothing new on Platter."`;
 function AgentSetup() {
   const { me } = useApp();
   const a = useAction();
   const [name, setName] = useState('Claude Code');
   const [created, setCreated] = useState<{ token: string; mcpUrl: string } | null>(null);
   const [client, setClient] = useState<'claude' | 'other'>('claude');
+  const [routineIn, setRoutineIn] = useState<'desktop' | 'terminal'>('desktop');
   const tokens = useLoad(() => api.get<{ tokens: any[] }>(`/agent-tokens${isAdmin(me) ? '?all=1' : ''}`), []);
   const capacity = useLoad(() => api.get<{ agents: any[] }>('/capacity'), []);
 
@@ -52,9 +61,10 @@ function AgentSetup() {
     ? `claude mcp add --transport http --scope user platter ${url} --header "Authorization: Bearer ${tok}"`
     : JSON.stringify({ mcpServers: { platter: { type: 'http', url, headers: { Authorization: `Bearer ${tok}` } } } }, null, 2);
   const autopilot = `## Platter
-At the start of every session: call Platter report_usage (roughly how much of your usage limit is left), then check_inbox and find_work.
+At the start of every session: get my exact usage by running \`claude -p "/usage"\`, then call Platter report_usage with the highest "% used" as used_percent (Platter rounds to the nearest 5%). Then check_inbox and find_work.
 Work tasks through Platter and submit proof for every "done when" item. Before you run out of usage mid-task, use handoff_task.
 When I say "ask <person> …", use ask_teammate. Answer teammates' questions only if you actually know.`;
+  const loopCmd = `/loop 30m ${ROUTINE_PROMPT.replace(/\n+/g, ' ')}`;
 
   const all = tokens.data?.tokens ?? [];
   const mine = all.filter((t) => t.member_id === me.id);
@@ -100,6 +110,28 @@ When I say "ask <person> …", use ask_teammate. Answer teammates' questions onl
               <p className="muted small">Add this to your CLAUDE.md so your agent shares its energy, checks messages and finds work on its own.</p>
               <div className="code"><pre>{autopilot}</pre><Copy text={autopilot} /></div>
             </details>
+          </div>
+        </div>
+        <div className="step">
+          <span className="step-n">4</span>
+          <div className="step-body">
+            <b>Keep up with messages</b>
+            <p className="muted small">Set a routine so your agent checks Platter every 30 minutes: it updates your energy, answers teammates' questions it actually knows, and tells you what's new.</p>
+            <div className="chips">
+              <button className={`toggle ${routineIn === 'desktop' ? 'on' : ''}`} onClick={() => setRoutineIn('desktop')}>Claude desktop app</button>
+              <button className={`toggle ${routineIn === 'terminal' ? 'on' : ''}`} onClick={() => setRoutineIn('terminal')}>Claude Code terminal</button>
+            </div>
+            {routineIn === 'desktop' ? (
+              <>
+                <p className="small">In Claude Code (desktop), say <b>“Schedule this every 30 minutes”</b> and paste:</p>
+                <div className="code"><pre>{ROUTINE_PROMPT}</pre><Copy text={ROUTINE_PROMPT} /></div>
+              </>
+            ) : (
+              <>
+                <p className="small">Paste this into a Claude Code session you keep open — it repeats every 30 minutes:</p>
+                <div className="code"><pre>{loopCmd}</pre><Copy text={loopCmd} /></div>
+              </>
+            )}
           </div>
         </div>
       </div>
