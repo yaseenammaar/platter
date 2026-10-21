@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import type { ApiError, Member, Project, Status, Task, Team } from './api';
+import { SketchFace } from './faces';
 import { Pip, Sketch, type PipMood, type SketchName } from './sketch';
 
 export { Pip, Sketch };
@@ -16,6 +17,8 @@ export interface AppState {
   members: Member[];
   projects: Project[];
   rules: any;
+  /** Owner controls: the team's action log, and whether my own agents are focus-locked. */
+  policy: { agent_log: boolean; agent_focus: boolean; focus_by: string | null };
   reload: () => Promise<void>;
 }
 export const AppCtx = createContext<AppState>(null as any);
@@ -151,13 +154,86 @@ export function timeAgo(d: string | null | undefined) {
 // ---------- Small components ----------
 const TINTS = ['blue', 'purple', 'orange', 'yellow', 'green', 'pink'];
 const tint = (s: string) => TINTS[[...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) % TINTS.length];
+/** Everyone's sketched profile picture, picked from their name. */
 export function Avatar({ name, size = 24 }: { name?: string | null; size?: number }) {
   if (!name) return <span className="avatar empty" style={{ width: size, height: size, fontSize: size * 0.45 }} title="Nobody yet">?</span>;
-  const initials = name.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
   return (
-    <span className={`avatar t-${tint(name)}`} title={name} style={{ width: size, height: size, fontSize: size * 0.38 }}>
-      {initials}
+    <span className={`avatar t-${tint(name)}`} title={name} role="img" aria-label={name} style={{ width: size, height: size }}>
+      <SketchFace name={name} size={size} />
     </span>
+  );
+}
+
+/** A pill on/off switch. */
+export function Switch({ on, onChange, disabled, label }: { on: boolean; onChange: (on: boolean) => void; disabled?: boolean; label: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} className={`switch ${on ? 'on' : ''}`} disabled={disabled} onClick={() => onChange(!on)}>
+      <span className="switch-knob" />
+    </button>
+  );
+}
+
+export interface PickOption { id: string; name: string; note?: ReactNode; /** Instead of a face, e.g. for "Everyone". */ icon?: SketchName }
+
+const PickFace = ({ o, size }: { o: PickOption; size: number }) => o.icon
+  ? <span className="avatar pick-icon" style={{ width: size, height: size }}><Sketch name={o.icon} size={size * 0.6} /></span>
+  : <Avatar name={o.name} size={size} />;
+
+/** Choose a person: faces, names and a note per person, with keyboard support. */
+export function PersonPicker({ options, value, onChange, placeholder = 'someone…', label, render }: {
+  options: PickOption[]; value: string; onChange: (id: string) => void; placeholder?: string; label: string;
+  /** How the chosen person reads on the button. */
+  render?: (o: PickOption) => ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [hi, setHi] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const chosen = options.find((o) => o.id === value);
+  const shown = options.filter((o) => o.name.toLowerCase().includes(query.trim().toLowerCase()));
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  useEffect(() => { setHi(Math.max(0, shown.findIndex((o) => o.id === value))); }, [open, query]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { listRef.current?.querySelector('.on')?.scrollIntoView({ block: 'nearest' }); }, [hi]);
+  const choose = (o: PickOption) => { onChange(o.id); setOpen(false); setQuery(''); };
+  const key = (e: React.KeyboardEvent) => {
+    if (!open && ['ArrowDown', 'Enter', ' '].includes(e.key)) { e.preventDefault(); setOpen(true); return; }
+    if (!open) return;
+    if (e.key === 'Escape') { e.preventDefault(); setOpen(false); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); setHi((i) => Math.min(shown.length - 1, i + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((i) => Math.max(0, i - 1)); }
+    else if (e.key === 'Enter' && shown[hi]) { e.preventDefault(); choose(shown[hi]); }
+  };
+  return (
+    <div className="picker" ref={ref} onKeyDown={key}>
+      <button type="button" className={`picker-btn ${chosen ? 'chosen' : ''}`} onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} aria-label={label}>
+        {chosen ? <><PickFace o={chosen} size={24} /><span>{render ? render(chosen) : firstName(chosen.name)}</span></> : <span className="muted">{placeholder}</span>}
+        <span className="chev">▾</span>
+      </button>
+      {open && (
+        <div className="picker-pop surface">
+          {options.length > 6 && (
+            <input className="picker-search" placeholder="Find someone" value={query} autoFocus onChange={(e) => setQuery(e.target.value)} />
+          )}
+          <div className="picker-list" role="listbox" aria-label={label} ref={listRef}>
+            {shown.map((o, i) => (
+              <button type="button" key={o.id} role="option" aria-selected={o.id === value} className={`picker-row ${i === hi ? 'on' : ''}`}
+                onMouseEnter={() => setHi(i)} onClick={() => choose(o)}>
+                <PickFace o={o} size={32} />
+                <span className="picker-text"><b>{o.name}</b>{o.note && <span className="muted small">{o.note}</span>}</span>
+                {o.id === value && <Sketch name="check" size={15} />}
+              </button>
+            ))}
+            {!shown.length && <div className="muted small picker-none">Nobody called that</div>}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

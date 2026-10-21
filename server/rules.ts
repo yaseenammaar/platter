@@ -17,6 +17,8 @@ export interface Actor {
   agent?: { id: string; name: string };
   /** Every action happens inside exactly one team. */
   workspace: Workspace;
+  /** Owner controls that apply to this agent (agents only). */
+  policy?: { focus: boolean; focusBy: string | null; log: boolean };
 }
 export interface Criterion { id: string; text: string }
 
@@ -134,10 +136,26 @@ export const RULEBOOK: { section: string; rules: { id: string; text: string }[] 
   {
     section: 'Check-ins between teammates',
     rules: [
-      { id: 'Q1', text: 'Anyone (or their agent) can ask a teammate for an update. The question goes to the person; their agent may answer it.' },
-      { id: 'Q2', text: 'An agent answers only from what it actually knows — work it did, Platter tasks and progress. If it is not sure, it leaves the question for its person. Agent answers are always labelled as such.' },
+      { id: 'Q1', text: 'Anyone (or their agent) can ask a teammate for an update. The question is for the teammate\'s agent, which looks it up and answers, so the person isn\'t interrupted. If they have no agent connected, the person answers.' },
+      { id: 'Q2', text: 'The agent answers every question it gets, from what it can actually check: its own work, the repo, Platter tasks and progress. It says what it checked, and if it can\'t confirm something it says so instead of guessing. Agent answers are always labelled as such, and the person can always reply too.' },
       { id: 'Q3', text: 'While waiting, the asker immediately gets what the board already knows: the teammate\'s matching tasks and their latest progress.' },
       { id: 'Q4', text: `Be kind to inboxes: at most ${LIMITS.maxOpenAsksPerPerson} unanswered questions to the same person at a time. Check-ins about a task also appear in that task's timeline.` },
+    ],
+  },
+  {
+    section: 'Focus lock (set by the owner)',
+    rules: [
+      { id: 'F1', text: 'The team owner can lock a person\'s agents to their assigned work. A locked agent works on exactly one task: the one its person has in progress, or else their next task that is Up next.' },
+      { id: 'F2', text: 'While locked, Platter refuses everything else: other tasks, reviews, taking over handoffs, and creating tasks. Off-topic ideas are parked on the focus task (park_idea) instead of acted on.' },
+      { id: 'F3', text: 'Only the owner can turn a lock on or off — not the person, and never an agent. It carries over from task to task: once one is submitted, the next assigned task becomes the focus.' },
+      { id: 'F4', text: 'A locked agent can still report its energy, hand its task off when it runs out, ask teammates about its task, and answer their questions.' },
+    ],
+  },
+  {
+    section: 'Agent action log (set by the owner)',
+    rules: [
+      { id: 'L1', text: 'The owner can turn on the agent action log. Every agent action is then recorded as one short line: the tool and its target (a file, a command, a task key). Never file contents, and anything that looks like a secret is blanked out.' },
+      { id: 'L2', text: 'Logging happens on Platter\'s side and in a background hook, so it costs agents no tokens. Repeats are folded into one line. The owner and admins see every agent\'s log; everyone sees their own. Lines are kept for 30 days.' },
     ],
   },
   {

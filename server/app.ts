@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { Hono, type Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { listActions, recordAction, summarizeHook } from './actionlog.ts';
 import { answerAsk, askTeammate, closeAsk, inbox, markAnswersSeen, unreadCount } from './asks.ts';
+import { focusBrief, setFocus } from './focus.ts';
 import {
   AGENT_TOKEN_PREFIX, SESSION_COOKIE, createSession, destroySession, hashPassword, listTeams, newSecret,
   requireUser, resolveActor, resolveUser, sha256, validatePassword, verifyPassword, type User,
@@ -231,18 +233,47 @@ api.use('*', async (c, next) => {
   }
   if (!bearer) requireCsrfHeader(c);
   c.set('actor', actor);
+  if (actor.kind !== 'agent') return next();
+  const path = c.req.path.replace(/^\/api/, '');
+  const hook = path.startsWith('/agent/');
+  // A locked agent can't route around the lock through the REST API: Platter work goes through MCP, where it is checked (F2).
+  if (actor.policy?.focus && !hook && !['/me', '/rules', '/usage'].includes(path)) {
+    throw new RuleError('focus_lock', '🔒 Focus lock: use the Platter MCP tools for your focus task (F2)', 403);
+  }
   await next();
+  if (!hook) await recordAction(actor, { source: 'platter', action: `${c.req.method} ${path}`.slice(0, 60), ok: c.res.status < 400 }).catch(() => {});
 });
 
-api.get('/me', (c) => c.json({ me: actorOf(c).member, agent: actorOf(c).agent ?? null, team: actorOf(c).workspace }));
+api.get('/me', async (c) => {
+  const actor = actorOf(c);
+  const p = await one(
+    `SELECT w.agent_log, m.agent_focus, fb.name AS focus_by FROM workspaces w
+       JOIN memberships m ON m.workspace_id = w.id AND m.user_id = $2
+       LEFT JOIN users fb ON fb.id = m.agent_focus_by WHERE w.id = $1`,
+    [actor.workspace.id, actor.member.id],
+  );
+  return c.json({
+    me: actor.member, agent: actor.agent ?? null, team: actor.workspace,
+    policy: { agent_log: !!p?.agent_log, agent_focus: !!p?.agent_focus, focus_by: p?.focus_by ?? null },
+  });
+});
 
 api.patch('/team', async (c) => {
   const actor = actorOf(c);
   requireAdmin(actor);
-  const name = String((await body(c)).name ?? '').trim();
-  if (name.length < 2 || name.length > 60) throw new RuleError('invalid', 'Team name must be 2–60 characters');
-  await q('UPDATE workspaces SET name = $2 WHERE id = $1', [actor.workspace.id, name]);
-  await logActivity(actor, { kind: 'project', message: `renamed the team to ${name}` });
+  const b = await body(c);
+  if (b.agent_log !== undefined) {
+    if (actor.member.role !== 'owner') throw new RuleError('forbidden', 'Only the team owner can turn the action log on or off (L1)', 403);
+    const on = b.agent_log === true;
+    await q('UPDATE workspaces SET agent_log = $2 WHERE id = $1', [actor.workspace.id, on]);
+    await logActivity(actor, { kind: 'policy', message: on ? 'turned on the agent action log' : 'turned off the agent action log' });
+  }
+  if (b.name !== undefined) {
+    const name = String(b.name ?? '').trim();
+    if (name.length < 2 || name.length > 60) throw new RuleError('invalid', 'Team name must be 2–60 characters');
+    await q('UPDATE workspaces SET name = $2 WHERE id = $1', [actor.workspace.id, name]);
+    await logActivity(actor, { kind: 'project', message: `renamed the team to ${name}` });
+  }
   return c.json({ ok: true });
 });
 
@@ -266,8 +297,14 @@ api.get('/members', async (c) => {
       (SELECT count(*)::int FROM tasks t WHERE t.workspace_id = m.workspace_id AND t.assignee_id = u.id AND t.status = 'blocked') AS blocked,
       (SELECT count(*)::int FROM tasks t WHERE t.workspace_id = m.workspace_id AND t.reviewer_id = u.id AND t.status = 'in_review') AS to_review,
       (SELECT count(*)::int FROM tasks t WHERE t.workspace_id = m.workspace_id AND t.assignee_id = u.id AND t.status = 'done' AND t.completed_at > now() - interval '7 days') AS done_7d,
-      (SELECT coalesce(sum(t.rework_count), 0)::int FROM tasks t WHERE t.workspace_id = m.workspace_id AND t.assignee_id = u.id AND t.completed_at > now() - interval '30 days') AS rework_30d
+      (SELECT coalesce(sum(t.rework_count), 0)::int FROM tasks t WHERE t.workspace_id = m.workspace_id AND t.assignee_id = u.id AND t.completed_at > now() - interval '30 days') AS rework_30d,
+      m.agent_focus, fb.name AS focus_by,
+      CASE WHEN m.agent_focus THEN (SELECT p.key || '-' || t.number FROM tasks t JOIN projects p ON p.id = t.project_id
+        WHERE t.workspace_id = m.workspace_id AND t.assignee_id = u.id AND t.status IN ('in_progress','blocked','ready')
+        ORDER BY CASE WHEN t.status = 'ready' THEN 1 ELSE 0 END, CASE t.priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 ELSE 3 END, t.updated_at DESC
+        LIMIT 1) END AS focus_task_key
     FROM memberships m JOIN users u ON u.id = m.user_id
+    LEFT JOIN users fb ON fb.id = m.agent_focus_by
     WHERE m.workspace_id = $1
     ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'member' THEN 2 ELSE 3 END, u.name`, [wsOf(c)]);
   return c.json({ members: rows });
@@ -309,6 +346,9 @@ api.patch('/members/:id', async (c) => {
   if (changes.length) await logActivity(actor, { kind: 'member', message: `${target.name}: ${changes.join(', ')}`, data: released });
   return c.json({ ok: true, released });
 });
+
+// Focus lock (F3): owner only, for anyone on the team including themselves.
+api.patch('/members/:id/focus', async (c) => c.json(await setFocus(actorOf(c), c.req.param('id'), (await body(c)).on === true)));
 
 api.get('/invites', async (c) => {
   requireAdmin(actorOf(c));
@@ -471,6 +511,30 @@ api.get('/asks/unread', async (c) => c.json({ unread: await unreadCount(actorOf(
 api.post('/asks', async (c) => c.json(await askTeammate(actorOf(c), await body(c))));
 api.post('/asks/:id/answer', async (c) => c.json(await answerAsk(actorOf(c), c.req.param('id'), (await body(c)).answer)));
 api.post('/asks/:id/close', async (c) => c.json(await closeAsk(actorOf(c), c.req.param('id'))));
+
+// ----- Hooks in the agent's own client (Bearer agent token) -----
+function requireAgent(a: Actor) {
+  if (a.kind !== 'agent') throw new RuleError('forbidden', 'This endpoint is for agent tokens', 403);
+}
+/** SessionStart / UserPromptSubmit hook: the focus lock as plain text, or nothing at all when unlocked. */
+api.get('/agent/focus', async (c) => {
+  requireAgent(actorOf(c));
+  return c.text(await focusBrief(actorOf(c)));
+});
+/** PostToolUse hook: one line per tool the agent ran. A no-op unless the owner turned the log on (L1). */
+api.post('/agent/log', async (c) => {
+  const actor = actorOf(c);
+  requireAgent(actor);
+  if (actor.policy?.log) {
+    const s = summarizeHook((await c.req.text()).slice(0, 8000));
+    if (s) await recordAction(actor, { source: 'local', ...s });
+  }
+  return c.body(null, 204);
+});
+api.get('/agent-actions', async (c) => {
+  const f = c.req.query();
+  return c.json({ actions: await listActions(actorOf(c), { member: f.member, before: Number(f.before) || undefined, limit: Number(f.limit) || 100 }) });
+});
 
 api.get('/activity', async (c) => {
   const before = Number(c.req.query('before')) || undefined;

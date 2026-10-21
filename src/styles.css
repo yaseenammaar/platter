@@ -543,3 +543,82 @@ textarea.plain { border: 0; padding: 4px 0 14px; background: transparent; font-s
 .flip { transform: rotate(180deg); }
 .auth .inline { margin-bottom: 10px; }
 .auth .inline input { flex: 1; }
+
+/* ============ Brand: logo, name, team ============ */
+.logo { flex-shrink: 0; overflow: visible; color: var(--on-primary); }
+.logo .logo-tile { fill: var(--primary); }
+.logo .logo-dome { fill: var(--pista-soft); }
+.logo .logo-shine { opacity: 0.55; }
+.logo path { filter: url(#wobble); }
+.switcher .brand { gap: 10px; padding: 4px 12px 4px 4px; border-radius: 16px; }
+.brand-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; text-align: left; }
+.brand-name { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; color: var(--ink); }
+.brand-team { font-weight: 500; font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 3px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand:hover .logo { transform: rotate(-6deg); }
+.logo { transition: transform 0.25s var(--ease); }
+
+/* ============ Sketched profile pictures ============ */
+.avatar { overflow: hidden; position: relative; }
+.avatar .face { display: block; filter: url(#wobble); }
+
+/* ============ Switch ============ */
+.switch { width: 44px; height: 26px; border-radius: 999px; border: 1px solid var(--line); background: var(--soft); padding: 2px; cursor: pointer; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+.switch:hover:not(:disabled) { border-color: var(--ink); }
+.switch:disabled { opacity: 0.5; cursor: not-allowed; }
+.switch-knob { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); transition: transform 0.22s var(--ease); }
+.switch.on { background: var(--primary); border-color: var(--pista-ink); }
+.switch.on .switch-knob { transform: translateX(18px); border-color: var(--pista-ink); }
+
+/* ============ Person picker ============ */
+.picker { position: relative; }
+.picker-btn { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 500; color: var(--ink); cursor: pointer; background: transparent; border: 1px dashed var(--dash); border-radius: 999px; padding: 5px 12px 5px 6px; min-height: 36px; white-space: nowrap; transition: border-color 0.2s, background 0.2s; }
+.picker-btn:not(.chosen) { padding-left: 14px; }
+.picker-btn.chosen { border-style: solid; border-color: var(--line); background: var(--soft); }
+.picker-btn:hover, .picker-btn[aria-expanded='true'] { border-color: var(--ink); }
+.picker-pop { position: absolute; left: 0; top: calc(100% + 8px); z-index: 35; width: 290px; max-width: calc(100vw - 32px); border-radius: 18px; padding: 6px; animation: menu-in 0.18s var(--ease) both; transform-origin: top left; }
+.picker-search { margin: 2px 2px 6px; width: calc(100% - 4px); padding: 8px 12px; border-radius: 12px; font-size: 14px; }
+.picker-list { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.picker-row { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--ink); background: none; border: 0; border-radius: 12px; padding: 7px 10px 7px 7px; cursor: pointer; }
+.picker-row.on { background: var(--soft); }
+.picker-row[aria-selected='true'] { color: var(--pista-ink); }
+.picker-text { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.3; }
+.picker-text b { font-weight: 600; font-size: 14.5px; }
+.picker-text .small { font-size: 12.5px; }
+.picker-none { padding: 10px 12px; }
+
+/* ============ Questions handled by the agent ============ */
+.q-agent { display: flex; align-items: center; gap: 6px; border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
+
+/* ============ Team rules: focus lock + action log ============ */
+.rule-panel p { margin: 4px 0 12px; }
+.rule-panel .panel-head .h-icon { display: grid; }
+.lock-list { display: flex; flex-direction: column; }
+.lock-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px dashed var(--line); }
+.lock-who { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.35; }
+.lock-row.locked .lock-who .small { color: var(--pista-ink); font-weight: 600; }
+.mate-flag.locked { background: var(--pista-soft); color: var(--pista-ink); }
+.mate-flag.locked a { color: inherit; }
+.k-parked .bubble { border-style: dashed; }
+
+/* ============ Agent log ============ */
+.log-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.log-bar p { margin: 0; }
+.log { font-size: 13.5px; }
+.log-line { display: flex; align-items: center; gap: 8px; padding: 6px 2px; border-bottom: 1px dashed var(--line); min-width: 0; }
+.log-time { font-family: var(--mono); font-size: 12px; color: var(--faint); min-width: 44px; white-space: nowrap; flex-shrink: 0; }
+.log-who { color: var(--muted); flex-shrink: 0; }
+.log-act { font-family: var(--mono); font-size: 12.5px; font-weight: 500; padding: 1px 8px; border-radius: 999px; flex-shrink: 0; background: var(--t-gray); color: var(--t-gray-ink); }
+.log-act.platter { background: var(--pista-soft); color: var(--pista-ink); }
+.log-target { font-family: var(--mono); font-size: 12.5px; color: var(--body); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-n { font-size: 12px; font-weight: 600; color: var(--muted); }
+.log-fail { color: var(--t-red-ink); display: grid; }
+.log-line.failed .log-act { background: var(--t-red); color: var(--t-red-ink); }
+.log-line .key { flex-shrink: 0; }
+@media (max-width: 640px) {
+  .log-who { display: none; }
+  .brand-team { max-width: 150px; }
+}
+/* The Ask bar's picker must float over the sections below (they animate in with transforms). */
+.checkin { position: relative; z-index: 20; }
+.avatar.pick-icon { background: var(--soft); color: var(--ink); }
+.code.tall pre { max-height: 240px; overflow-y: auto; }

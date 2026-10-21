@@ -80,7 +80,11 @@ export async function askTeammate(actor: Actor, input: { to?: string; to_member_
     [id, actor.member.id, actor.agent?.id ?? null, to.id, task?.id ?? null, question.slice(0, 2000), ws],
   );
   await logActivity(actor, { taskId: task?.id, projectId: task?.project_id, kind: 'ask', message: `asked ${to.name}: ${question}`, data: { ask_id: id } });
-  return { id, to: to.name, hints: await boardHints(ws, to.id, question, task?.id ?? null) };
+  const agents = await one<{ n: number }>(
+    `SELECT count(*)::int AS n FROM agent_tokens WHERE workspace_id = $1 AND member_id = $2 AND revoked_at IS NULL`,
+    [ws, to.id],
+  );
+  return { id, to: to.name, has_agent: agents!.n > 0, hints: await boardHints(ws, to.id, question, task?.id ?? null) };
 }
 
 const ASK_SELECT = `

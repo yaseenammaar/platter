@@ -8,7 +8,7 @@ import { NewTaskPage } from './pages/NewTask';
 import { SettingsPage } from './pages/Settings';
 import { TaskPage } from './pages/Task';
 import { TeamPage } from './pages/Team';
-import { SketchDefs, type SketchName } from './sketch';
+import { Logo, SketchDefs, type SketchName } from './sketch';
 import { AppCtx, Avatar, ErrorBox, Loading, Pip, Sketch, Toaster, toast, useAction, useApp, useLoad, useTheme, type AppState } from './ui';
 
 const HAS_VT = typeof document !== 'undefined' && 'startViewTransition' in document;
@@ -65,7 +65,7 @@ function TeamGate({ boot }: { boot: Boot }) {
     try {
       const [me, m, p, r] = await Promise.all([api.get('/me'), api.get('/members'), api.get('/projects'), api.get('/rules')]);
       setState({
-        me: me.me, workspace: me.team.name, team: me.team, teams: boot.teams,
+        me: me.me, workspace: me.team.name, team: me.team, teams: boot.teams, policy: me.policy,
         members: m.members, projects: p.projects, rules: r, reload: load,
       });
       setError(null);
@@ -142,10 +142,12 @@ function TeamSwitcher() {
   }, [open]);
   return (
     <div className="switcher" ref={ref}>
-      <button className="brand" onClick={() => setOpen(!open)} aria-expanded={open}>
-        <Pip size={28} mood="happy" />
-        <span>{team.name}</span>
-        <span className="chev">▾</span>
+      <button className="brand" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`Platter, team ${team.name}. Switch team`}>
+        <Logo size={36} />
+        <span className="brand-text">
+          <span className="brand-name">Platter</span>
+          <span className="brand-team">{team.name}<span className="chev">▾</span></span>
+        </span>
       </button>
       {open && (
         <div className="menu-pop switch-pop surface">

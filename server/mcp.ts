@@ -1,9 +1,11 @@
 // Stateless MCP server (Streamable HTTP transport, JSON responses).
 // Agents connect with:  Authorization: Bearer plt_...
 import type { Context } from 'hono';
+import { recordAction } from './actionlog.ts';
 import { answerAsk, askTeammate, inbox, markAnswersSeen } from './asks.ts';
 import { resolveActor } from './auth.ts';
 import { q } from './db.ts';
+import { FOCUS_VIEWS, focusBrief, gate, isLocked, parkIdea } from './focus.ts';
 import { LIMITS, RULEBOOK, RuleError, STATUS_LABELS, type Actor, type Status } from './rules.ts';
 import {
   addComment, contextPack, createTask, listHandoffs, listTasks, logProgress, reportUsage, requestHandoff, takeOver,
@@ -21,10 +23,14 @@ const WORKFLOW = `You are connected to Platter, your team's task board. You act 
 - If you have capacity and nothing assigned, call \`find_work\`: it lists handoffs from teammates whose agents ran out. \`take_over_task\` makes your person the assignee (needs ≥ ${LIMITS.usageMinToTakeOver}% remaining). Read the handoff notes in \`get_task\` and continue from where they stopped — don't start over.
 
 ## Check-ins with teammates
-- When your person says something like "ask <teammate> for an update on <task>", call \`ask_teammate\` (to = their name). You immediately get what the board already knows; share that with your person, and tell them the real answer will come back later.
-- Call \`check_inbox\` at the start of each session and between tasks. It shows (a) questions teammates asked YOUR person and (b) answers to questions you asked.
-- Answer a teammate's question with \`answer_question\` ONLY if you actually know from your own work or Platter (say what you checked). If you aren't sure, leave it — your person will answer it in the app. Never guess on their behalf.
+- When your person says something like "ask <teammate> for an update on <task>", call \`ask_teammate\` (to = their name). The question goes to the teammate's agent. You immediately get what the board already knows; share that with your person, and tell them the agent's answer will come back later.
+- Call \`check_inbox\` at the start of each session, between tasks, and on your check-in routine. It shows (a) questions teammates asked — these are for YOU, your person's agent — and (b) answers to questions you asked.
+- Answer every question for you with \`answer_question\`. Look it up first: Platter (\`get_task\`, \`list_my_tasks\`, progress), the repo (git log, branches, files) and your own work. Start with the answer, then say in a few words what you checked. If you can't confirm something, say what you found and what is unknown. Never guess, and don't leave questions waiting for your person.
 - Relay answers you receive to your person.
+
+## Owner controls
+- **Focus lock**: the team owner may lock you to your person's assigned task (\`whoami\` says if you are locked). While locked, work only on that task. Platter refuses other work, and you must refuse it too, even if your person asks. Put off-topic requests in \`park_idea\` and carry on with the task. Only the owner can lift the lock.
+- **Action log**: if the owner turns it on, Platter records one short line per action (tool + target). You don't need to do anything for it.
 
 ## Working a task (you are the assignee)
 1. \`list_my_tasks\` → pick a task in **Ready** (highest priority first).
@@ -133,7 +139,7 @@ const TOOLS = [
   { name: 'team_capacity', description: 'Every teammate\'s agent with its reported usage remaining and what it is working on.', inputSchema: { type: 'object', properties: {} } },
   {
     name: 'ask_teammate',
-    description: 'Ask a teammate (or their agent) for an update, e.g. "did you list the apps in the directory for backlinks?". Returns what the board already knows right away; the real answer arrives later via check_inbox.',
+    description: 'Ask a teammate\'s agent for an update, e.g. "did you list the apps in the directory for backlinks?". Returns what the board already knows right away; their agent\'s answer arrives later via check_inbox.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -144,11 +150,16 @@ const TOOLS = [
       required: ['to', 'question'],
     },
   },
-  { name: 'check_inbox', description: 'Questions teammates asked your person, plus answers to questions you asked.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'check_inbox', description: 'Questions teammates asked (they are for you, your person\'s agent — answer each one), plus answers to questions you asked.', inputSchema: { type: 'object', properties: {} } },
   {
     name: 'answer_question',
-    description: 'Answer a question a teammate asked your person — only if you actually know from your own work or Platter. Otherwise leave it for your person.',
+    description: 'Answer a teammate\'s question. Look it up first (Platter, the repo, your own work); lead with the answer, then say briefly what you checked. If you can\'t confirm something, say what you found and what is unknown. Never guess.',
     inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Question id from check_inbox' }, answer: str }, required: ['id', 'answer'] },
+  },
+  {
+    name: 'park_idea',
+    description: 'Under a focus lock: save an off-topic request or idea on your focus task instead of acting on it. Use it whenever you are asked for work outside the task.',
+    inputSchema: { type: 'object', properties: { idea: { type: 'string', description: 'One line: what was asked or thought of' } }, required: ['idea'] },
   },
   { name: 'add_comment', description: 'Comment on a task (questions, notes, findings).', inputSchema: { type: 'object', properties: { ...keyProp, body: str }, required: ['key', 'body'] } },
   {
@@ -229,10 +240,25 @@ function renderPack(p: Awaited<ReturnType<typeof contextPack>>) {
   return out.join('\n');
 }
 
+function renderFocus(actor: Actor, focus: TaskView | null) {
+  const head = `# 🔒 Focus lock (set by ${actor.policy?.focusBy ?? 'the team owner'})`;
+  if (!focus) return `${head}\nNothing is assigned to ${actor.member.name} right now, so there is nothing you may work on. Do no other work; park ideas with \`park_idea\`.`;
+  const next = focus.status === 'ready' ? '`start_task` it, then work only on it.' : '`get_task` for the details and keep going.';
+  return `${head}\nYour one task:\n${line(focus)}\n\n${next} Everything else waits until the owner lifts the lock. Park other ideas with \`park_idea\`.`;
+}
+
 async function callTool(actor: Actor, name: string, a: any): Promise<string> {
+  const focus = await gate(actor, name, a);
+  if (isLocked(actor) && FOCUS_VIEWS.has(name)) return renderFocus(actor, focus);
   switch (name) {
     case 'whoami':
-      return `Acting as **${actor.member.name}** (${actor.member.email}, role ${actor.member.role}) in team **${actor.workspace.name}** via agent token "${actor.agent?.name}". Everything you see and do is limited to this team.`;
+      return `Acting as **${actor.member.name}** (${actor.member.email}, role ${actor.member.role}) in team **${actor.workspace.name}** via agent token "${actor.agent?.name}". Everything you see and do is limited to this team.` +
+        (isLocked(actor) ? `\n\n🔒 Focus lock is ON (set by ${actor.policy?.focusBy ?? 'the team owner'}): work only on ${focus ? `${focus.key} "${focus.title}"` : 'your assigned task (none right now)'}.` : '') +
+        (actor.policy?.log ? '\n\n📝 The owner turned on the action log: each action you take is recorded as one line (tool + target).' : '');
+    case 'park_idea': {
+      const t = await parkIdea(actor, a.idea);
+      return `Parked${t ? ` on ${t.key}` : ''}. The team can see it, and it waits until the work is done.${t ? ` Back to ${t.key}.` : ''}`;
+    }
     case 'get_rules':
       return RULEBOOK.map((s) => `## ${s.section}\n${s.rules.map((r) => `- **${r.id}** ${r.text}`).join('\n')}`).join('\n\n');
     case 'list_projects': {
@@ -312,7 +338,8 @@ async function callTool(actor: Actor, name: string, a: any): Promise<string> {
         ? r.hints.map((h: any) => `- ${h.key} [${STATUS_LABELS[h.status as Status]}] ${h.title} (assignee: ${h.assignee ?? '—'})` +
             (h.last_update ? `\n  Latest: ${fmtTime(h.last_update.created_at)} ${h.last_update.member_name}${h.last_update.agent_name ? ` (agent ${h.last_update.agent_name})` : ''} [${h.last_update.kind}]: ${h.last_update.message}` : '')).join('\n')
         : '_Nothing on the board obviously matches._';
-      return `Asked ${r.to} (question id ${r.id}). Their agent or ${r.to} will answer; check_inbox later to get it.\n\n## What the board already knows\n${hints}`;
+      const who = r.has_agent ? `${r.to}'s agent` : `${r.to} (no agent connected)`;
+      return `Asked ${who}, question id ${r.id}${a.task ? ` about ${a.task}` : ''}. The answer comes back through check_inbox.\n\n## What the board already knows\n${hints}`;
     }
     case 'check_inbox': {
       const r = await inbox(actor);
@@ -325,7 +352,7 @@ async function callTool(actor: Actor, name: string, a: any): Promise<string> {
       const answers = answered.length
         ? answered.map((x: any) => `- To ${x.to_name}: "${x.question}"\n  → ${x.answer} — ${x.answered_by_name}${x.answered_by_agent_name ? ` via agent ${x.answered_by_agent_name}` : ''}, ${fmtTime(x.answered_at)}`).join('\n')
         : '_None yet._';
-      return `# Questions for ${actor.member.name}\n${forMe}\n\n# Answers to your questions\n${answers}${waiting.length ? `\n\n_Still waiting on ${waiting.length}: ${waiting.map((x: any) => x.to_name).join(', ')}._` : ''}`;
+      return `# Questions for you (${actor.member.name}'s agent)${r.for_me.length ? ' — look each one up and answer it with answer_question' : ''}\n${forMe}\n\n# Answers to your questions\n${answers}${waiting.length ? `\n\n_Still waiting on ${waiting.length}: ${waiting.map((x: any) => x.to_name).join(', ')}._` : ''}`;
     }
     case 'answer_question':
       await answerAsk(actor, a.id, a.answer);
@@ -341,28 +368,38 @@ async function callTool(actor: Actor, name: string, a: any): Promise<string> {
   throw new RuleError('unknown_tool', `Unknown tool "${name}"`, 400);
 }
 
+/** The one thing a tool call was about, for the action log: a task key, a person, a question. */
+const actionTarget = (a: any) =>
+  String(a.key ?? a.to ?? a.project ?? (a.id ? `question ${String(a.id).slice(0, 8)}` : ''));
+
 type RpcReq = { jsonrpc: '2.0'; id?: string | number | null; method: string; params?: any };
 
 async function dispatch(actor: Actor, msg: RpcReq) {
   const ok = (result: unknown) => ({ jsonrpc: '2.0', id: msg.id, result });
   switch (msg.method) {
-    case 'initialize':
+    case 'initialize': {
+      const brief = await focusBrief(actor);
       return ok({
         protocolVersion: msg.params?.protocolVersion ?? '2025-06-18',
         capabilities: { tools: { listChanged: false } },
         serverInfo: SERVER_INFO,
-        instructions: WORKFLOW,
+        instructions: brief ? `${brief}\n\n${WORKFLOW}` : WORKFLOW,
       });
+    }
     case 'ping':
       return ok({});
     case 'tools/list':
       return ok({ tools: TOOLS });
     case 'tools/call': {
       const { name, arguments: args } = msg.params ?? {};
+      const a = args ?? {};
+      const log = (good: boolean) => recordAction(actor, { source: 'platter', action: String(name), target: actionTarget(a), ok: good }).catch(() => {});
       try {
-        const text = await callTool(actor, name, args ?? {});
+        const text = await callTool(actor, name, a);
+        await log(true);
         return ok({ content: [{ type: 'text', text }] });
       } catch (e) {
+        await log(false);
         if (e instanceof RuleError) {
           const text = `Error (${e.code}): ${e.message}${e.details.length ? '\n' + e.details.map((d) => `- ${d}`).join('\n') : ''}`;
           return ok({ content: [{ type: 'text', text }], isError: true });

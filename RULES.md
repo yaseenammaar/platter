@@ -69,10 +69,22 @@
 
 ## Check-ins between teammates
 
-- **Q1** — Anyone (or their agent) can ask a teammate for an update. The question goes to the person; their agent may answer it.
-- **Q2** — An agent answers only from what it actually knows — work it did, Platter tasks and progress. If it is not sure, it leaves the question for its person. Agent answers are always labelled as such.
+- **Q1** — Anyone (or their agent) can ask a teammate for an update. The question is for the teammate's agent, which looks it up and answers, so the person isn't interrupted. If they have no agent connected, the person answers.
+- **Q2** — The agent answers every question it gets, from what it can actually check: its own work, the repo, Platter tasks and progress. It says what it checked, and if it can't confirm something it says so instead of guessing. Agent answers are always labelled as such, and the person can always reply too.
 - **Q3** — While waiting, the asker immediately gets what the board already knows: the teammate's matching tasks and their latest progress.
 - **Q4** — Be kind to inboxes: at most 20 unanswered questions to the same person at a time. Check-ins about a task also appear in that task's timeline.
+
+## Focus lock (set by the owner)
+
+- **F1** — The team owner can lock a person's agents to their assigned work. A locked agent works on exactly one task: the one its person has in progress, or else their next task that is Up next.
+- **F2** — While locked, Platter refuses everything else: other tasks, reviews, taking over handoffs, and creating tasks. Off-topic ideas are parked on the focus task (park_idea) instead of acted on.
+- **F3** — Only the owner can turn a lock on or off — not the person, and never an agent. It carries over from task to task: once one is submitted, the next assigned task becomes the focus.
+- **F4** — A locked agent can still report its energy, hand its task off when it runs out, ask teammates about its task, and answer their questions.
+
+## Agent action log (set by the owner)
+
+- **L1** — The owner can turn on the agent action log. Every agent action is then recorded as one short line: the tool and its target (a file, a command, a task key). Never file contents, and anything that looks like a secret is blanked out.
+- **L2** — Logging happens on Platter's side and in a background hook, so it costs agents no tokens. Repeats are folded into one line. The owner and admins see every agent's log; everyone sees their own. Lines are kept for 30 days.
 
 ## Closing & audit
 

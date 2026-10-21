@@ -215,12 +215,14 @@ const SAY: Record<string, string> = {
   approve: 'approved it — served', reject: 'asked for changes', block: 'got stuck', resume: 'got unstuck',
   release: 'put it back in To do', cancel: 'dropped it', reopen: 'reopened it', handoff: 'passed it on',
   takeover: 'picked up the plate', offboarded: 'returned it to drafts (teammate left)', ask: 'asked', answer: 'answered',
+  parked: 'parked an idea for later',
 };
 const KIND_ICON: Record<string, SketchName> = {
   start: 'plane', submit: 'box', approve: 'done', reject: 'wrench', block: 'stuck', resume: 'bolt', handoff: 'hand',
   takeover: 'handoff', ask: 'chat', answer: 'chat', usage: 'bolt', created: 'sparkle', mark_ready: 'plane', progress: 'feed', comment: 'chat',
+  parked: 'lock', policy: 'lock',
 };
-const SHOW_BODY = new Set(['comment', 'progress', 'block', 'handoff', 'ask', 'answer']);
+const SHOW_BODY = new Set(['comment', 'progress', 'block', 'handoff', 'ask', 'answer', 'parked']);
 const QUIET = new Set(['edited', 'mark_ready', 'move_to_backlog', 'created', 'offboarded']);
 
 export function storyText(e: ActivityItem) {

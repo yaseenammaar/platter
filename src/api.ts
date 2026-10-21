@@ -40,6 +40,12 @@ export interface Member {
   id: string; name: string; email: string; role: Role; status?: string;
   active_agents?: number; agent_last_seen?: string | null;
   ready?: number; in_progress?: number; blocked?: number; to_review?: number; done_7d?: number; rework_30d?: number;
+  /** Focus lock set by the owner, and the one task it points at. */
+  agent_focus?: boolean; focus_by?: string | null; focus_task_key?: string | null;
+}
+export interface AgentAction {
+  id: number; source: 'platter' | 'local'; action: string; target: string; ok: boolean; n: number;
+  created_at: string; last_at: string; member_id: string; member_name: string; agent_name: string; task_key: string | null;
 }
 export interface Criterion { id: string; text: string }
 export interface Task {

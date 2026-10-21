@@ -1,7 +1,9 @@
 // Populates a running local Platter with demo teams, agents and work in every state.
 // Usage: DEMO_EMAIL=you@x DEMO_PASSWORD=... [DEMO_TEAM="Sniff Engineering"] npx tsx scripts/demo.ts   (API at http://localhost:8787)
 // Creates your account + team (or signs you in if the account exists), then a second team you're also in.
+// DEMO_TAG=2 gives the made-up teammates fresh emails (priya2@…), to seed a database that already has a demo.
 const API = process.env.API_URL ?? 'http://localhost:8787';
+const tag = process.env.DEMO_TAG ?? '';
 
 class Session {
   cookie = '';
@@ -45,13 +47,15 @@ const signup = await owner.call('POST', '/api/signup', {
   team: process.env.DEMO_TEAM ?? 'Sniff Engineering', code,
 });
 owner.team = signup.team;
+// The owner wants to see what agents do (L1).
+await owner.call('PATCH', '/api/team', { agent_log: true });
 await owner.call('POST', '/api/projects', { key: 'WEB', name: 'Web App' });
 await owner.call('PATCH', '/api/projects/WEB', {
   agent_instructions: 'Repo: https://github.com/acme/web — branch from main, one PR per task titled "WEB-N: …".\nRun tests: `npm test` · Lint: `npm run lint` (both must pass before submitting).\nDon\'t add dependencies without commenting on the task first.',
 });
 
 const team: Record<string, { s: Session; id: string; agent: string }> = {};
-for (const [name, email] of [['Priya Shah', 'priya@example.test'], ['Marco Diaz', 'marco@example.test'], ['Lena Kim', 'lena@example.test']]) {
+for (const [name, email] of [['Priya Shah', `priya${tag}@example.test`], ['Marco Diaz', `marco${tag}@example.test`], ['Lena Kim', `lena${tag}@example.test`]]) {
   const { link } = await owner.call('POST', '/api/invites', { email, role: 'member' });
   const s = new Session();
   s.team = (await s.call('POST', `/api/join/${link.split('/join/')[1]}`, { name, password: 'demo-password-123' })).team;
@@ -150,9 +154,24 @@ const me = (await owner.call('GET', '/api/me')).me;
 await Lena.s.call('POST', '/api/asks', { to_member_id: me.id, question: 'Are we still launching the CSV export this Friday?' });
 console.log('Check-ins added.');
 
+// Focus lock: the owner locks Lena's agent to her task; an off-topic request gets parked (F1/F2).
+await owner.call('PATCH', `/api/members/${Lena.id}/focus`, { on: true });
+await tool(Lena.agent, 'park_idea', { idea: 'Lena asked to also restyle the admin sidebar' });
+// What the PostToolUse hook in Lena's Claude Code sends: one line per tool, no tokens.
+for (const [tool_name, tool_input] of [
+  ['Read', { file_path: '/work/web/src/api/audit.ts' }], ['Edit', { file_path: '/work/web/src/api/audit.ts' }],
+  ['Edit', { file_path: '/work/web/test/audit.spec.ts' }], ['Bash', { command: 'npm test -- audit' }], ['Bash', { command: 'npm test -- audit' }],
+] as const) {
+  await fetch(`${API}/api/agent/log`, {
+    method: 'POST', headers: { authorization: `Bearer ${Lena.agent}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ cwd: '/work/web', hook_event_name: 'PostToolUse', tool_name, tool_input }),
+  });
+}
+console.log('Focus lock and action log added.');
+
 // A second, completely separate team. You're invited into it too, so the team switcher has two entries.
 const noor = new Session();
-noor.team = (await noor.call('POST', '/api/signup', { name: 'Noor Haddad', email: 'noor@example.test', password: 'demo-password-123', team: 'Moonshot Studio', code })).team;
+noor.team = (await noor.call('POST', '/api/signup', { name: 'Noor Haddad', email: `noor${tag}@example.test`, password: 'demo-password-123', team: 'Moonshot Studio', code })).team;
 await noor.call('POST', '/api/projects', { key: 'WEB', name: 'Landing site' });
 const { link: moonLink } = await noor.call('POST', '/api/invites', { email: process.env.DEMO_EMAIL, role: 'member' });
 await owner.call('POST', `/api/join/${moonLink.split('/join/')[1]}`, {});

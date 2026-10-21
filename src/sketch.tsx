@@ -99,6 +99,25 @@ export function Pip({ mood = 'happy', size = 64, className = '' }: { mood?: PipM
   );
 }
 
+/** The Platter mark: a sketched serving dome on a platter, with a little shine. */
+export function Logo({ size = 32, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg className={`logo ${className}`} width={size} height={size} viewBox="0 0 48 48" fill="none" stroke="currentColor"
+      strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="Platter">
+      <rect className="logo-tile" x="1" y="1" width="46" height="46" rx="14" stroke="none" />
+      {/* dome */}
+      <path className="logo-dome" d="M10.4 31.2c0-8.4 6-14.6 13.6-14.6s13.6 6.2 13.6 14.6z" />
+      <path d="M24 16.6v-2.8" />
+      <path d="M21.2 13.4c0-1.6 1.2-2.8 2.8-2.8s2.8 1.2 2.8 2.8" />
+      {/* shine */}
+      <path className="logo-shine" d="M16.4 26.4c.6-2.8 2.4-5 4.8-6.2" />
+      {/* platter */}
+      <path d="M6.6 31.4c11.6-.6 23.2-.6 34.8 0" />
+      <path d="M9 31.6c1 2.8 3.4 4.4 6.8 4.4h16.4c3.4 0 5.8-1.6 6.8-4.4" />
+    </svg>
+  );
+}
+
 /** One-time SVG defs: the pencil-wobble filter. */
 export function SketchDefs() {
   return (

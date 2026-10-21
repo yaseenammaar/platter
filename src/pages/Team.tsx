@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { api, type Member } from '../api';
+import { Link } from 'react-router-dom';
+import { api, href, type Member } from '../api';
 import type { SketchName } from '../sketch';
 import { Avatar, Battery, Copy, ErrorBox, Menu, Modal, Sketch, firstName, isAdmin, toast, useAction, useApp, useLoad } from '../ui';
 
@@ -23,6 +24,16 @@ export function TeamPage() {
     });
   };
   const canManage = (m: Member) => admin && m.id !== me.id && m.role !== 'owner' && (me.role === 'owner' || m.role !== 'admin');
+  // Focus lock (F3): only the owner, for anyone who can be given work — themselves included.
+  const canLock = (m: Member) => me.role === 'owner' && m.status === 'active' && m.role !== 'viewer';
+  const lock = (m: Member, on: boolean) => a.run(async () => {
+    await api.patch(`/members/${m.id}/focus`, { on });
+    toast(on ? `${firstName(m.name)}'s agents are locked to their task` : `${firstName(m.name)}'s agents are free again`);
+    await reload();
+  });
+  const lockItem = (m: Member) => canLock(m) && (m.agent_focus
+    ? { label: 'Lift focus lock', onClick: () => lock(m, false) }
+    : { label: 'Lock agents to their task', onClick: () => lock(m, true) });
 
   return (
     <div className="page">
@@ -44,8 +55,9 @@ export function TeamPage() {
                   <b>{m.name}{m.id === me.id && <span className="muted"> (you)</span>}</b>
                   <span className="muted small with-icon">{m.status === 'suspended' ? <><Sketch name="zzz" size={13} /> Paused</> : <><Sketch name={ROLE_BADGE[m.role][0]} size={13} /> {ROLE_BADGE[m.role][1]}</>}</span>
                 </div>
-                {canManage(m) && (
-                  <Menu items={m.status === 'active' ? [
+                {(canManage(m) || canLock(m)) && (
+                  <Menu items={!canManage(m) ? [lockItem(m)] : m.status === 'active' ? [
+                    lockItem(m),
                     me.role === 'owner' && m.role !== 'admin' && { label: 'Make admin', onClick: () => update(m, { role: 'admin' }) },
                     m.role !== 'member' && { label: 'Make teammate', onClick: () => update(m, { role: 'member' }) },
                     m.role !== 'viewer' && { label: 'Make view-only', onClick: () => update(m, { role: 'viewer' }, `Make ${firstName(m.name)} view-only? Their open tasks go back to drafts.`) },
@@ -58,6 +70,11 @@ export function TeamPage() {
                 <span title="Waiting for them to check"><b>{m.to_review ?? 0}</b> to check</span>
                 <span title="Finished this week"><b>{m.done_7d ?? 0}</b> done this week</span>
               </div>
+              {m.agent_focus && (
+                <div className="mate-flag locked with-icon" title={`Set by ${m.focus_by ?? 'the owner'}`}>
+                  <Sketch name="lock" size={14} /> {m.focus_task_key ? <>Locked to <Link to={href(`/tasks/${m.focus_task_key}`)} viewTransition>{m.focus_task_key}</Link></> : 'Locked, waiting for a task'}
+                </div>
+              )}
               {busy && <div className="mate-flag with-icon"><Sketch name="sweat" size={14} /> Pretty busy right now</div>}
               {(m.blocked ?? 0) > 0 && <div className="mate-flag stuck with-icon"><Sketch name="stuck" size={14} /> {m.blocked} stuck</div>}
               <div className="mate-agents">

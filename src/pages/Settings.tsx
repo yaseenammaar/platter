@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
-import { api, type Project, href } from '../api';
+import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { api, type Member, type Project, href } from '../api';
 import type { SketchName } from '../sketch';
-import { Battery, Copy, Empty, ErrorBox, Menu, Pip, Sketch, Text, firstName, isAdmin, timeAgo, toast, useAction, useApp, useLoad, useTheme, type Theme } from '../ui';
+import { Avatar, Battery, Copy, Empty, ErrorBox, Menu, Pip, Sketch, Switch, Text, firstName, isAdmin, timeAgo, toast, useAction, useApp, useLoad, useTheme, type Theme } from '../ui';
 
 export function SettingsPage() {
   const { me } = useApp();
@@ -12,11 +12,13 @@ export function SettingsPage() {
       <nav className="tabs">
         <NavLink to={href('/settings')} end viewTransition><Sketch name="agent" size={16} /> My agent</NavLink>
         <NavLink to={href('/settings/projects')} viewTransition><Sketch name="folder" size={16} /> Projects</NavLink>
+        <NavLink to={href('/settings/team-rules')} viewTransition><Sketch name="lock" size={16} /> Team rules</NavLink>
         <NavLink to={href('/settings/rules')} viewTransition><Sketch name="scroll" size={16} /> How we work</NavLink>
       </nav>
       <Routes>
         <Route index element={me.role === 'viewer' ? <Empty mood="happy">View-only members don't connect agents.</Empty> : <AgentSetup />} />
         <Route path="projects" element={<Projects />} />
+        <Route path="team-rules" element={<TeamRules />} />
         <Route path="rules" element={<Rules />} />
       </Routes>
       <Appearance />
@@ -29,20 +31,19 @@ export function SettingsPage() {
 
 // ---------- My agent ----------
 
-/** What the recurring check-in routine does. Shared by both ways of scheduling it. */
+/** What the recurring check-in routine does. */
 export const ROUTINE_PROMPT = `Platter check-in routine.
 1. Energy: run \`claude -p "/usage"\` in a shell. Find the limit with the highest "% used" and call the Platter tool report_usage with that as used_percent (and its reset time as resets_at). Platter rounds to the nearest 5%.
 2. Messages: call Platter check_inbox.
-   - Questions for me: if you can answer from Platter itself (get_task, list_my_tasks, the task's progress), answer with answer_question and say what you checked. If you're not sure, leave it for me. Never guess.
+   - Questions from teammates are for you, my agent. Look each one up in Platter (get_task, list_my_tasks, the task's progress), the repo (git log, branches, files) and your own work, then answer it with answer_question: the answer first, then what you checked. If you can't confirm something, say what you found and what is unknown. Never guess, and don't leave questions for me.
    - Answers to my questions: collect them.
-3. Finish with a short summary for me: new answers, questions you answered, and questions waiting on me. If nothing is new, just say "Nothing new on Platter."`;
+3. Finish with a short summary for me: new answers, and the questions you answered. If nothing is new, just say "Nothing new on Platter."`;
 function AgentSetup() {
   const { me } = useApp();
   const a = useAction();
   const [name, setName] = useState('Claude Code');
   const [created, setCreated] = useState<{ token: string; mcpUrl: string } | null>(null);
   const [client, setClient] = useState<'claude' | 'other'>('claude');
-  const [routineIn, setRoutineIn] = useState<'desktop' | 'terminal'>('desktop');
   const tokens = useLoad(() => api.get<{ tokens: any[] }>(`/agent-tokens${isAdmin(me) ? '?all=1' : ''}`), []);
   const capacity = useLoad(() => api.get<{ agents: any[] }>('/capacity'), []);
 
@@ -56,6 +57,7 @@ function AgentSetup() {
   };
 
   const url = created?.mcpUrl ?? `${location.origin}/mcp`;
+  const origin = url.replace(/\/mcp$/, '');
   const tok = created?.token ?? 'YOUR_TOKEN';
   const cmd = client === 'claude'
     ? `claude mcp add --transport http --scope user platter ${url} --header "Authorization: Bearer ${tok}"`
@@ -63,8 +65,21 @@ function AgentSetup() {
   const autopilot = `## Platter
 At the start of every session: get my exact usage by running \`claude -p "/usage"\`, then call Platter report_usage with the highest "% used" as used_percent (Platter rounds to the nearest 5%). Then check_inbox and find_work.
 Work tasks through Platter and submit proof for every "done when" item. Before you run out of usage mid-task, use handoff_task.
-When I say "ask <person> …", use ask_teammate. Answer teammates' questions only if you actually know.`;
-  const loopCmd = `/loop 30m ${ROUTINE_PROMPT.replace(/\n+/g, ' ')}`;
+When I say "ask <person> …", use ask_teammate. Teammates' questions in check_inbox are for you: look each one up and answer it with answer_question.`;
+  const auth = `-H 'Authorization: Bearer ${tok}'`;
+  const focusHook = `curl -fsS -m 3 ${auth} ${origin}/api/agent/focus || true`;
+  const logHook = `b=$(head -c 2000); printf '%s' "$b" | curl -fsS -m 3 -X POST ${auth} -H 'content-type: application/json' --data-binary @- ${origin}/api/agent/log >/dev/null 2>&1 &`;
+  const cmdHook = (command: string) => [{ hooks: [{ type: 'command', command }] }];
+  const hooks = JSON.stringify({ hooks: { SessionStart: cmdHook(focusHook), UserPromptSubmit: cmdHook(focusHook), PostToolUse: cmdHook(logHook) } }, null, 2);
+  // One paste does the rest: the team-rules hooks plus the 30-minute check-in.
+  const setup = `Set up Platter in Claude Code for me. Do both steps, then tell me in one line what you did.
+
+1. Team rules: add these hooks to ~/.claude/settings.json. Merge them into any "hooks" already there and keep everything else as it is. If a hook that calls ${origin}/api/agent is already there, replace it rather than adding a second one. They make the owner's focus lock and action log work here, and cost no tokens.
+${hooks}
+
+2. Check-in: schedule this every 30 minutes. Use your scheduling tool; in a terminal session without one, run it with /loop 30m.
+
+${ROUTINE_PROMPT}`;
 
   const all = tokens.data?.tokens ?? [];
   const mine = all.filter((t) => t.member_id === me.id);
@@ -115,23 +130,13 @@ When I say "ask <person> …", use ask_teammate. Answer teammates' questions onl
         <div className="step">
           <span className="step-n">4</span>
           <div className="step-body">
-            <b>Keep up with messages</b>
-            <p className="muted small">Set a routine so your agent checks Platter every 30 minutes: it updates your energy, answers teammates' questions it actually knows, and tells you what's new.</p>
-            <div className="chips">
-              <button className={`toggle ${routineIn === 'desktop' ? 'on' : ''}`} onClick={() => setRoutineIn('desktop')}>Claude desktop app</button>
-              <button className={`toggle ${routineIn === 'terminal' ? 'on' : ''}`} onClick={() => setRoutineIn('terminal')}>Claude Code terminal</button>
-            </div>
-            {routineIn === 'desktop' ? (
-              <>
-                <p className="small">In Claude Code (desktop), say <b>“Schedule this every 30 minutes”</b> and paste:</p>
-                <div className="code"><pre>{ROUTINE_PROMPT}</pre><Copy text={ROUTINE_PROMPT} /></div>
-              </>
-            ) : (
-              <>
-                <p className="small">Paste this into a Claude Code session you keep open — it repeats every 30 minutes:</p>
-                <div className="code"><pre>{loopCmd}</pre><Copy text={loopCmd} /></div>
-              </>
-            )}
+            <b>Keep it running: one paste</b>
+            <p className="muted small">
+              Paste this into Claude Code. It sets up a check-in every 30 minutes that updates your energy, answers teammates' questions and tells you what's new.
+              It also adds the hooks that let your owner's focus lock and action log work. Those cost your agent no tokens.
+            </p>
+            {!created && <p className="small with-icon"><Sketch name="key" size={14} /> Connect in step 1 first, so your key is filled in.</p>}
+            <div className="code tall"><pre>{setup}</pre><Copy text={setup} label="Copy setup" /></div>
           </div>
         </div>
       </div>
@@ -232,8 +237,10 @@ const BASICS: [SketchName, string, string][] = [
   ['agent', 'Your agent works for you', 'it picks up your tasks, posts updates, and shows proof for each “done when” item.'],
   ['review', 'Someone else always checks', 'nobody approves their own work. Feedback goes straight back to the doer.'],
   ['bolt', 'Agents share their energy', 'when one runs low it passes the task on with notes, and a teammate’s agent continues.'],
-  ['chat', 'Just ask', 'ask a teammate a question — they or their agent answer, and it comes back to you.'],
+  ['chat', 'Just ask', 'ask a teammate’s agent a question. It looks it up and answers, and the answer comes back to you.'],
   ['palm', 'Not too much at once', 'there’s a cap on how many tasks one person has going, so things actually finish.'],
+  ['lock', 'The owner can lock agents to one task', 'a locked agent works only on its assigned task and parks everything else for later.'],
+  ['feed', 'The owner can log what agents do', 'one short line per action, kept on Platter’s side, so it costs agents nothing.'],
 ];
 
 function Rules() {
@@ -287,5 +294,70 @@ function TeamName() {
       <button className="btn" disabled={a.busy || name.trim() === workspace}>Save</button>
       <ErrorBox error={a.error} />
     </form>
+  );
+}
+
+// ---------- Team rules (set by the owner) ----------
+function TeamRules() {
+  const { me, members, policy, reload } = useApp();
+  const owner = me.role === 'owner';
+  const a = useAction();
+  const people = members.filter((m) => m.status === 'active' && m.role !== 'viewer');
+  const setLog = (on: boolean) => a.run(async () => {
+    await api.patch('/team', { agent_log: on });
+    toast(on ? 'Action log is on' : 'Action log is off');
+    await reload();
+  });
+  const setFocus = (m: Member, on: boolean) => a.run(async () => {
+    await api.patch(`/members/${m.id}/focus`, { on });
+    toast(on ? `${firstName(m.name)}'s agents are locked to their task` : `${firstName(m.name)}'s agents are free again`);
+    await reload();
+  });
+  const agents = (m: Member) => (m.active_agents ? `${m.active_agents} agent${m.active_agents > 1 ? 's' : ''}, free to work on anything` : 'no agent yet');
+  return (
+    <div className="stack">
+      {!owner && <div className="tip surface"><Sketch name="crown" size={16} /> Only the team owner can change these. You can see what's on.</div>}
+      <section className="panel rule-panel">
+        <div className="panel-head">
+          <span className="h-icon"><Sketch name="lock" size={20} /></span><b>Focus lock</b>
+        </div>
+        <p className="muted small">
+          Lock someone's agents to the task assigned to them. A locked agent works on that one task: Platter refuses other work,
+          and anything else it's asked to do gets parked for later. When the task is sent for review, the lock moves to their next one. Only you can lift it.
+        </p>
+        <div className="lock-list">
+          {people.map((m) => (
+            <div key={m.id} className={`lock-row ${m.agent_focus ? 'locked' : ''}`}>
+              <Avatar name={m.name} size={34} />
+              <span className="lock-who">
+                <b>{m.name}{m.id === me.id && <span className="muted"> (you)</span>}</b>
+                <span className="muted small with-icon">
+                  {m.agent_focus
+                    ? <><Sketch name="lock" size={13} /> {m.focus_task_key ? <>Locked to <Link to={href(`/tasks/${m.focus_task_key}`)} viewTransition>{m.focus_task_key}</Link></> : 'Locked. Nothing assigned yet'}</>
+                    : agents(m)}
+                </span>
+              </span>
+              <Switch on={!!m.agent_focus} disabled={!owner || a.busy} onChange={(on) => setFocus(m, on)} label={`Focus lock for ${m.name}`} />
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="panel rule-panel">
+        <div className="panel-head">
+          <span className="h-icon"><Sketch name="feed" size={20} /></span><b>Action log</b>
+          <span className="spacer" />
+          <Switch on={policy.agent_log} disabled={!owner || a.busy} onChange={setLog} label="Agent action log" />
+        </div>
+        <p className="muted small">
+          Record every action every agent takes as one short line: the tool and what it touched (a file, a command, a task).
+          No file contents, and anything that looks like a secret is blanked out. Platter and a background hook write it, not the agent, so it costs no tokens. Lines are kept for 30 days.
+        </p>
+        {policy.agent_log && <Link to={href('/feed?view=log')} viewTransition className="link-btn small">See the log</Link>}
+      </section>
+      <p className="muted small">
+        Platter enforces both on its side. To make them reach inside Claude Code too, each person pastes the setup from <Link to={href('/settings')} viewTransition>My agent, step 4</Link>.
+      </p>
+      <ErrorBox error={a.error} />
+    </div>
   );
 }

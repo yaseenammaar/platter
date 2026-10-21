@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type Ask, type Task, href } from '../api';
 import type { SketchName } from '../sketch';
-import { Avatar, Battery, Copy, ErrorBox, Loading, Pip, Sketch, firstName, timeAgo, toast, useAction, useApp, useLoad } from '../ui';
+import { Avatar, Battery, Copy, ErrorBox, Loading, PersonPicker, Pip, Sketch, firstName, timeAgo, toast, useAction, useApp, useLoad } from '../ui';
 import { TaskCard } from './Board';
 
 const greeting = () => {
@@ -43,7 +43,11 @@ export function HomePage({ onInboxChange }: { onInboxChange: () => void }) {
   const needsMe = [...data.reviewing, ...doing.filter((t) => t.status === 'blocked' || t.handoff_open)];
   const answers = data.asks.my_questions.filter((a) => a.status === 'answered');
   const pending = data.asks.my_questions.filter((a) => a.status === 'open');
-  const todo = needsMe.length + data.asks.for_me.length;
+  // Questions are for my agent; they only land on me when I have no agent connected (Q1).
+  const agentAnswers = data.tokens.length > 0;
+  const forMe = agentAnswers ? [] : data.asks.for_me;
+  const forAgent = agentAnswers ? data.asks.for_me : [];
+  const todo = needsMe.length + forMe.length;
   const pip = pipSays(todo, doing.length, data.handoffs.length);
 
   return (
@@ -66,10 +70,16 @@ export function HomePage({ onInboxChange }: { onInboxChange: () => void }) {
         </Link>
       )}
 
-      {(data.asks.for_me.length > 0 || needsMe.length > 0) && (
+      {(forMe.length > 0 || needsMe.length > 0) && (
         <Section title="Needs you" icon="bell">
-          {data.asks.for_me.map((a) => <QuestionCard key={a.id} ask={a} onDone={reload} />)}
+          {forMe.map((a) => <QuestionCard key={a.id} ask={a} onDone={reload} />)}
           {needsMe.length > 0 && <div className="cards">{needsMe.map((t) => <TaskCard key={t.id} t={t} />)}</div>}
+        </Section>
+      )}
+
+      {forAgent.length > 0 && (
+        <Section title="Your agent is on these" icon="agent" hint="Teammates asked your agent. It looks each one up and answers at its next check-in.">
+          {forAgent.map((a) => <QuestionCard key={a.id} ask={a} onDone={reload} byAgent />)}
         </Section>
       )}
 
@@ -89,7 +99,7 @@ export function HomePage({ onInboxChange }: { onInboxChange: () => void }) {
             {pending.map((a) => (
               <div key={a.id} className="answer pending">
                 <Avatar name={a.to_name} size={30} />
-                <div><div className="muted small with-icon"><Sketch name="hourglass" size={13} /> Waiting on {firstName(a.to_name)} · {timeAgo(a.created_at)}</div><div>“{a.question}”</div></div>
+                <div><div className="muted small with-icon"><Sketch name="hourglass" size={13} /> Waiting on {firstName(a.to_name)}'s agent · {timeAgo(a.created_at)}</div><div>“{a.question}”</div></div>
               </div>
             ))}
           </div>
@@ -144,8 +154,9 @@ function Section({ title, icon, hint, children }: { title: string; icon: SketchN
   );
 }
 
-function QuestionCard({ ask, onDone }: { ask: Ask; onDone: () => void }) {
+function QuestionCard({ ask, onDone, byAgent }: { ask: Ask; onDone: () => void; byAgent?: boolean }) {
   const [answer, setAnswer] = useState('');
+  const [self, setSelf] = useState(!byAgent);
   const a = useAction();
   const send = (e: FormEvent) => {
     e.preventDefault();
@@ -161,16 +172,24 @@ function QuestionCard({ ask, onDone }: { ask: Ask; onDone: () => void }) {
           {ask.task_key && <Link to={href(`/tasks/${ask.task_key}`)} viewTransition className="small">about {ask.task_title}</Link>}
         </div>
       </div>
-      <div className="q-reply">
-        <input placeholder="Type your answer…" value={answer} onChange={(e) => setAnswer(e.target.value)} />
-        <button className="btn primary" disabled={a.busy || !answer.trim()}>Reply</button>
-      </div>
+      {self ? (
+        <div className="q-reply">
+          <input placeholder="Type your answer…" value={answer} onChange={(e) => setAnswer(e.target.value)} autoFocus={byAgent} />
+          <button className="btn primary" disabled={a.busy || !answer.trim()}>Reply</button>
+        </div>
+      ) : (
+        <div className="q-agent muted small with-icon">
+          <Sketch name="agent" size={14} /> Your agent will answer
+          <span className="spacer" />
+          <button type="button" className="link-btn small" onClick={() => setSelf(true)}>Answer it yourself</button>
+        </div>
+      )}
       <ErrorBox error={a.error} />
     </form>
   );
 }
 
-/** "Ask a teammate…" — for humans; agents do the same with ask_teammate. */
+/** "Ask a teammate's agent…" — for humans; agents do the same with ask_teammate. */
 function CheckIn({ onSent }: { onSent: () => void }) {
   const { me, members } = useApp();
   const others = members.filter((m) => m.id !== me.id && m.status === 'active');
@@ -179,11 +198,18 @@ function CheckIn({ onSent }: { onSent: () => void }) {
   const [hints, setHints] = useState<any[] | null>(null);
   const a = useAction();
   if (!others.length || me.role === 'viewer') return null;
+  const hasAgent = (id: string) => (members.find((m) => m.id === id)?.active_agents ?? 0) > 0;
+  const options = others.map((m) => ({
+    id: m.id, name: m.name,
+    note: hasAgent(m.id)
+      ? <span className="with-icon"><Sketch name="agent" size={13} /> their agent answers</span>
+      : <span className="with-icon"><Sketch name="pencil" size={13} /> no agent yet, {firstName(m.name)} answers</span>,
+  }));
   const send = (e: FormEvent) => {
     e.preventDefault();
     a.run(async () => {
       const r = await api.post('/asks', { to_member_id: to, question });
-      toast(`Asked ${firstName(r.to)} — I'll bring the answer back`);
+      toast(r.has_agent ? `Asked ${firstName(r.to)}'s agent. The answer comes back here` : `Asked ${firstName(r.to)}. The answer comes back here`);
       setHints(r.hints);
       setQuestion('');
       onSent();
@@ -193,10 +219,8 @@ function CheckIn({ onSent }: { onSent: () => void }) {
     <form className="checkin surface" onSubmit={send}>
       <span className="checkin-icon"><Sketch name="chat" size={20} /></span>
       <span className="checkin-label">Ask</span>
-      <select value={to} onChange={(e) => setTo(e.target.value)} required>
-        <option value="">someone…</option>
-        {others.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-      </select>
+      <PersonPicker label="Who to ask" options={options} value={to} onChange={setTo}
+        render={(o) => hasAgent(o.id) ? <>{firstName(o.name)}'s agent</> : firstName(o.name)} />
       <input placeholder="did you list the apps in the directory yet?" value={question} onChange={(e) => setQuestion(e.target.value)} required />
       <button className="btn primary" disabled={a.busy || !to || question.trim().length < 5}>Ask</button>
       <ErrorBox error={a.error} />

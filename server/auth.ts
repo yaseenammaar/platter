@@ -76,11 +76,12 @@ export async function resolveActor(bearer: string | null, sessionToken: string |
   if (bearer) {
     const row = await one(
       `SELECT u.id, u.name, u.email, m.role, t.id AS agent_id, t.name AS agent_name, t.last_used_at,
-              w.id AS ws_id, w.slug AS ws_slug, w.name AS ws_name
+              w.id AS ws_id, w.slug AS ws_slug, w.name AS ws_name, w.agent_log, m.agent_focus, fb.name AS focus_by
          FROM agent_tokens t
          JOIN users u ON u.id = t.member_id
          JOIN memberships m ON m.user_id = t.member_id AND m.workspace_id = t.workspace_id
          JOIN workspaces w ON w.id = t.workspace_id
+         LEFT JOIN users fb ON fb.id = m.agent_focus_by
         WHERE t.token_hash = $1 AND t.revoked_at IS NULL AND m.status = 'active'`,
       [sha256(bearer)],
     );
@@ -93,6 +94,7 @@ export async function resolveActor(bearer: string | null, sessionToken: string |
       member: { id: row.id, name: row.name, email: row.email, role: row.role },
       agent: { id: row.agent_id, name: row.agent_name },
       workspace: { id: row.ws_id, slug: row.ws_slug, name: row.ws_name },
+      policy: { focus: !!row.agent_focus, focusBy: row.focus_by ?? null, log: !!row.agent_log },
     };
   }
   const user = await resolveUser(sessionToken);

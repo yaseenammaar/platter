@@ -35,7 +35,7 @@ Agents report how much of their usage limit is left (`report_usage`), and everyo
 
 <p align="center"><img src="docs/check-ins.svg" alt="You ask your agent to check in with a teammate. The board answers instantly with what it knows; the question travels to the teammate, whose agent replies from the task's progress, and the answer lands in your Home inbox." width="100%"></p>
 
-Say *"ask a teammate for an update"* and your agent calls `ask_teammate`. You get what the board already knows straight away. The teammate's agent answers (`answer_question`) only if it actually knows from its own work. Otherwise the question waits on that person's Home page. Answers come back through `check_inbox` and show up on your Home page.
+Say *"ask a teammate for an update"* and your agent calls `ask_teammate`. You get what the board already knows straight away. The question is for the teammate's **agent**, not the person: at its next check-in it looks the answer up (Platter, the repo, its own work), replies with `answer_question` and says what it checked. The person only answers if they have no agent connected. Answers come back through `check_inbox` and show up on your Home page.
 
 ### 4. Teams
 
@@ -48,6 +48,15 @@ Anyone can start a team, which can be limited with a signup code. Teams are full
 <p align="center"><img src="docs/connect-agent.svg" alt="Three steps: name your agent in Settings and press Connect; paste one command into the terminal, which reports Connected; then just talk to your agent." width="100%"></p>
 
 In **Settings → My agent**, name your agent and paste the one-line command it gives you. That's it: ask your agent to pick up your next task or review what's waiting for you. It works with Claude Code, Cursor and any MCP client.
+
+Step 4 is one more paste for Claude Code. It schedules a check-in every 30 minutes (energy, teammates' questions, what's new) and installs the hooks that carry the owner controls below into Claude Code.
+
+### 6. Owner controls
+
+Under **Settings → Team rules** the team owner gets two switches:
+
+- **Focus lock (monogamy).** Lock someone's agents to the task assigned to them. A locked agent gets one task: whatever its person has in progress, or else their next one up. Platter refuses other work (other tasks, reviews, takeovers, new tasks, even its REST API). The hook puts a short note in front of every prompt, so the agent turns down off-topic requests and saves them with `park_idea`. Once the task is submitted, the lock moves to the next one. Only the owner can lift it.
+- **Action log.** Records every agent action as one line: the tool and what it touched (`Edit src/login.ts`, `Bash npm test`, `start_task WEB-12`). Platter logs its own tools on the server. A background hook sends the first 2 KB of each local tool call, and the server keeps only the tool and target, blanks out anything that looks like a secret, and folds repeats into one line. None of it goes through the model, so it costs the agent no tokens. See it under **Feed → Agent log**.
 
 Everything above is enforced by a single rulebook ([`server/rules.ts`](server/rules.ts), rendered in [RULES.md](RULES.md) and in the app under **Settings → How we work**).
 
@@ -74,7 +83,7 @@ Then just tell your agent: *"Pick up my next Platter task"* or *"Review the task
 ```bash
 npm install
 npm run dev        # web on http://localhost:5173, API on :8787 (signup code: local-dev)
-npm test           # 30 end-to-end tests: workflow, rules, MCP, handoffs, check-ins, team isolation
+npm test           # 45 end-to-end tests: workflow, rules, MCP, handoffs, check-ins, teams, focus lock, action log
 ```
 
 Local dev uses an embedded Postgres (PGlite) stored in `.data/`, with the same migration files, so no database setup is needed. To populate two demo teams (you're in both) on a fresh local database:
@@ -83,6 +92,8 @@ Local dev uses an embedded Postgres (PGlite) stored in `.data/`, with the same m
 DEMO_EMAIL=you@example.com DEMO_PASSWORD=your-password npm run demo
 ```
 
+Already have a demo in that database? Add `DEMO_TAG=2` so the made-up teammates get fresh emails.
+
 ## Layout
 
 | Path | What |
@@ -90,6 +101,8 @@ DEMO_EMAIL=you@example.com DEMO_PASSWORD=your-password npm run demo
 | `server/rules.ts` | The rulebook: workflow transitions, permissions, quality gates, limits |
 | `server/tasks.ts` | Task service: create/edit/transition, context pack, capacity & handoffs, offboarding |
 | `server/asks.ts` | Check-ins between teammates and their agents |
+| `server/focus.ts` | Focus lock: the one task a locked agent may touch, the tool gate, `park_idea` |
+| `server/actionlog.ts` | Action log: one-line rows, hook parsing, secret redaction |
 | `server/mcp.ts` | MCP server for agents (stateless Streamable HTTP) and the agent workflow instructions |
 | `server/app.ts` | REST API (Hono): signup, teams, auth, invites, members, agent tokens, projects, tasks, activity |
 | `server/auth.ts` | Users, sessions, and resolving *who* is acting in *which team* |
