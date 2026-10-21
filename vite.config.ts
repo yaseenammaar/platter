@@ -23,5 +23,7 @@ function checkinScript(): Plugin {
 
 export default defineConfig({
   plugins: [react(), checkinScript()],
-  server: { proxy: { '/api': api, '/mcp': api } },
+  // Keep the browser's host on proxied requests, so links the API builds (setup links,
+  // /checkin.py) point at this dev server, like they point at the one domain in production.
+  server: { proxy: Object.fromEntries(['/api', '/mcp', '/s/'].map((p) => [p, { target: api, changeOrigin: false }])) },
 });

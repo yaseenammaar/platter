@@ -671,3 +671,4 @@ textarea.plain { border: 0; padding: 4px 0 14px; background: transparent; font-s
 @keyframes ob-pulse-dot { 50% { opacity: 0.3; transform: scale(0.7); } }
 .top-actions { display: inline-flex; align-items: center; gap: 8px; }
 .help-btn { font: 700 17px var(--font); line-height: 1; }
+.code.one-line pre { white-space: pre-wrap; word-break: break-all; }

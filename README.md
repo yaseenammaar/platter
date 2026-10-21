@@ -47,7 +47,7 @@ Anyone can start a team, which can be limited with a signup code. Teams are full
 
 <p align="center"><img src="docs/connect-agent.svg" alt="Three steps: name your agent in Settings and press Connect; paste one command into the terminal, which reports Connected; then just talk to your agent." width="100%"></p>
 
-In **Settings → My agent**, name your agent, then paste the one setup prompt it gives you into Claude Code. That single paste connects Platter, checks the connection, installs the hooks that carry the owner controls below into Claude Code, and schedules a check-in every 30 minutes (energy, teammates' questions, what's new). The page waits until Platter hears from your agent, shows it as verified, then shows what to say to it. Cursor and other MCP clients get a config block instead.
+In **Settings → My agent**, name your agent, then paste the one line it gives you into Claude Code (for example `Set up Platter for me by running: curl -fsSL https://…/s/<code> | sh`). The line is a one-time setup link: it works once, for 30 minutes, and returns the full setup with your key, so the key never appears on screen. In the database the key is kept only sealed with a key derived from the link code. **New link** rotates the agent's key if a link is lost or expires. The setup connects Platter, checks the connection, installs the hooks that carry the owner controls below into Claude Code, and schedules a check-in every 30 minutes (energy, teammates' questions, what's new). The page waits until Platter hears from your agent, shows it as verified, then shows what to say to it. Cursor and other MCP clients get a config block instead.
 
 ### 6. A welcome tour
 
@@ -96,7 +96,7 @@ Then just tell your agent: *"Pick up my next Platter task"* or *"Review the task
 ```bash
 npm install
 npm run dev        # web on http://localhost:5173, API on :8787 (signup code: local-dev)
-npm test           # 46 end-to-end tests: workflow, rules, MCP, handoffs, check-ins, teams, focus lock, action log
+npm test           # 50 end-to-end tests: workflow, rules, MCP, handoffs, check-ins, teams, focus lock, action log
 ```
 
 Local dev uses an embedded Postgres (PGlite) stored in `.data/`, with the same migration files, so no database setup is needed. To populate two demo teams (you're in both) on a fresh local database:
@@ -116,6 +116,7 @@ Already have a demo in that database? Add `DEMO_TAG=2` so the made-up teammates 
 | `server/asks.ts` | Check-ins between teammates and their agents |
 | `server/focus.ts` | Focus lock: the one task a locked agent may touch, the tool gate, `park_idea` |
 | `server/actionlog.ts` | Action log: one-line rows, hook parsing, secret redaction |
+| `server/setup.ts` | One-time setup links: sealed keys, the Mac setup script, the step-by-step prompt |
 | `server/mcp.ts` | MCP server for agents (stateless Streamable HTTP) and the agent workflow instructions |
 | `server/app.ts` | REST API (Hono): signup, teams, auth, invites, members, agent tokens, projects, tasks, activity |
 | `server/auth.ts` | Users, sessions, and resolving *who* is acting in *which team* |

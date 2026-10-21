@@ -30,18 +30,11 @@ export function SettingsPage() {
 
 // ---------- My agent ----------
 
-/** What the recurring check-in routine does. */
-export const ROUTINE_PROMPT = `Platter check-in routine.
-1. Energy: run \`claude -p "/usage"\` in a shell. Find the limit with the highest "% used" and call the Platter tool report_usage with that as used_percent (and its reset time as resets_at). Platter rounds to the nearest 5%.
-2. Messages: call Platter check_inbox.
-   - Questions from teammates are for you, my agent. Look each one up in Platter (get_task, list_my_tasks, the task's progress), the repo (git log, branches, files) and your own work, then answer it with answer_question: the answer first, then what you checked. If you can't confirm something, say what you found and what is unknown. Never guess, and don't leave questions for me.
-   - Answers to my questions: collect them.
-3. Finish with a short summary for me: new answers, and the questions you answered. If nothing is new, just say "Nothing new on Platter."`;
 function AgentSetup() {
   const { me } = useApp();
   const a = useAction();
   const [name, setName] = useState('Claude Code');
-  const [created, setCreated] = useState<{ id: string; token: string; mcpUrl: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string; token: string; mcpUrl: string; setup: string; setupExpiresInMinutes: number } | null>(null);
   // Macs get the free background check-in; everyone else the scheduled routine.
   const [client, setClient] = useState<'mac' | 'claude' | 'other'>(() => (/Mac/i.test(navigator.userAgent) ? 'mac' : 'claude'));
   const [verified, setVerified] = useState<'no' | 'yes' | 'skipped'>('no');
@@ -70,42 +63,19 @@ function AgentSetup() {
 
   const url = created?.mcpUrl ?? `${location.origin}/mcp`;
   const origin = url.replace(/\/mcp$/, '');
-  const tok = created?.token ?? 'YOUR_TOKEN';
-  const addCmd = `claude mcp add --transport http --scope user platter ${url} --header "Authorization: Bearer ${tok}"`;
-  const otherConfig = JSON.stringify({ mcpServers: { platter: { type: 'http', url, headers: { Authorization: `Bearer ${tok}` } } } }, null, 2);
+  const tok = created?.token ?? '';
+  // One short line; the link returns the full setup (with the key) once, then stops working.
+  const link = (code: string) => `${origin}/s/${code}`;
+  const macLine = (code: string) => `Set up Platter for me by running: curl -fsSL ${link(code)} | sh`;
+  const otherLine = (code: string) => `Set up Platter for me: run curl -fsSL "${link(code)}?as=prompt" and follow the steps it prints.`;
+  const HIDDEN = '••••••••';
+  const line = client === 'mac' ? macLine : otherLine;
+  const config = (t: string) => JSON.stringify({ mcpServers: { platter: { type: 'http', url, headers: { Authorization: `Bearer ${t}` } } } }, null, 2);
+  const relink = () => a.run(async () => { setCreated(await api.post(`/agent-tokens/${created!.id}/relink`)); toast('New setup link ready'); });
   const autopilot = `## Platter
 At the start of every session: get my exact usage by running \`claude -p "/usage"\`, then call Platter report_usage with the highest "% used" as used_percent (Platter rounds to the nearest 5%). Then check_inbox and find_work.
 Work tasks through Platter and submit proof for every "done when" item. Before you run out of usage mid-task, use handoff_task.
 When I say "ask <person> …", use ask_teammate. Teammates' questions in check_inbox are for you: look each one up and answer it with answer_question.`;
-  const auth = `-H 'Authorization: Bearer ${tok}'`;
-  const focusHook = `curl -fsS -m 3 ${auth} ${origin}/api/agent/focus || true`;
-  const logHook = `b=$(head -c 2000); printf '%s' "$b" | curl -fsS -m 3 -X POST ${auth} -H 'content-type: application/json' --data-binary @- ${origin}/api/agent/log >/dev/null 2>&1 &`;
-  const cmdHook = (command: string) => [{ hooks: [{ type: 'command', command }] }];
-  const hooks = JSON.stringify({ hooks: { SessionStart: cmdHook(focusHook), UserPromptSubmit: cmdHook(focusHook), PostToolUse: cmdHook(logHook) } }, null, 2);
-  // Mac: connect, check, then Platter's own check-in script (energy for free, the model only for questions).
-  const macSetup = `Set up Platter in Claude Code for me. Do these three steps in order, then tell me in one line what you did.
-
-1. Connect: run this in a shell. If it says "platter" already exists, run \`claude mcp remove platter -s user\` first, then run it again.
-${addCmd}
-
-2. Check: run \`claude mcp list\` and make sure platter shows as connected. That is also how Platter knows the setup worked.
-
-3. Free background check-in: run this in a shell. It downloads Platter's check-in script and installs it, then tell me what it printed.
-mkdir -p ~/.platter && curl -fsSL ${origin}/checkin.py -o ~/.platter/checkin.py && python3 ~/.platter/checkin.py --install`;
-  // Windows / Linux: connect, check, team-rules hooks, and the 30-minute check-in run by the model.
-  const setup = `Set up Platter in Claude Code for me. Do these four steps in order, then tell me in one line what you did.
-
-1. Connect: run this in a shell. If it says "platter" already exists, run \`claude mcp remove platter -s user\` first, then run it again.
-${addCmd}
-
-2. Check: run \`claude mcp list\` and make sure platter shows as connected. That is also how Platter knows the setup worked.
-
-3. Team rules: add these hooks to ~/.claude/settings.json. Merge them into any "hooks" already there and keep everything else as it is. If a hook that calls ${origin}/api/agent is already there, replace it rather than adding a second one. They make the owner's focus lock and action log work here, and cost no tokens.
-${hooks}
-
-4. Check-in: schedule this every 30 minutes. Use your scheduling tool; in a terminal session without one, run it with /loop 30m.
-
-${ROUTINE_PROMPT}`;
 
   const all = tokens.data?.tokens ?? [];
   const mine = all.filter((t) => t.member_id === me.id);
@@ -123,7 +93,7 @@ ${ROUTINE_PROMPT}`;
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Claude Code – laptop" />
               <button className="btn primary" disabled={a.busy || name.trim().length < 3}>Connect</button>
             </form>
-            {created && <div className="ok-note with-icon"><Sketch name="key" size={16} /> Key made! It's in the setup below. Copy it now, because we won't show it again.</div>}
+            {created && <div className="ok-note with-icon"><Sketch name="key" size={16} /> Key made and kept out of sight. The setup below carries it for you.</div>}
           </div>
         </div>
         {created && (
@@ -136,28 +106,25 @@ ${ROUTINE_PROMPT}`;
                 <button className={`toggle ${client === 'claude' ? 'on' : ''}`} onClick={() => setClient('claude')}>Claude Code · Windows / Linux</button>
                 <button className={`toggle ${client === 'other' ? 'on' : ''}`} onClick={() => setClient('other')}>Cursor & others</button>
               </div>
-              {client === 'mac' ? (
+              {client !== 'other' ? (
                 <>
                   <p className="muted small">
-                    One paste does it all: connects Platter, checks the connection, and installs a free background check-in.
-                    It reports your energy every 5 minutes and right after each task step without using the model, and only wakes Claude when a teammate asks you something.
-                    It also carries your owner's focus lock and one-line action log into Claude Code.
+                    {client === 'mac'
+                      ? <>One line does it all: connects Platter, checks the connection, and installs a free background check-in. It reports your energy every 5 minutes and after each task step without using the model, only wakes Claude when a teammate asks you something, and carries your owner&apos;s focus lock and action log into Claude Code.</>
+                      : <>One line does it all: Claude Code connects Platter, checks the connection, adds the hooks for your owner&apos;s focus lock and action log (they cost no tokens), and schedules a check-in every 30 minutes.</>}
                   </p>
-                  <div className="code tall"><pre>{macSetup}</pre><Copy text={macSetup} label="Copy setup" /></div>
-                  <p className="muted small">To remove it later: <code>python3 ~/.platter/checkin.py --uninstall</code></p>
-                </>
-              ) : client === 'claude' ? (
-                <>
-                  <p className="muted small">
-                    One paste does it all: connects Platter, checks the connection, adds the hooks for your owner's focus lock and action log (they cost no tokens),
-                    and schedules a check-in every 30 minutes that updates your energy, answers teammates' questions and tells you what's new.
+                  <div className="code one-line"><pre>{line(HIDDEN)}</pre><Copy text={line(created.setup)} label="Copy" /></div>
+                  <p className="muted small with-icon">
+                    <Sketch name="lock" size={13} /> The link works once, for {created.setupExpiresInMinutes} minutes, and your key never shows on screen.
+                    <span className="spacer" />
+                    <button type="button" className="link-btn small" onClick={relink} disabled={a.busy}>Used or expired? New link</button>
                   </p>
-                  <div className="code tall"><pre>{setup}</pre><Copy text={setup} label="Copy setup" /></div>
+                  {client === 'mac' && <p className="muted small">To remove it later: <code>python3 ~/.platter/checkin.py --uninstall</code></p>}
                 </>
               ) : (
                 <>
-                  <p className="muted small">Add this to your agent's MCP settings, then start a new chat so it connects.</p>
-                  <div className="code"><pre>{otherConfig}</pre><Copy text={otherConfig} /></div>
+                  <p className="muted small">Add this to your agent&apos;s MCP settings, then start a new chat so it connects. Your key is hidden here; Copy includes it.</p>
+                  <div className="code"><pre>{config(`${tok.slice(0, 8)}${HIDDEN}`)}</pre><Copy text={config(tok)} /></div>
                 </>
               )}
               {verified === 'no' ? (

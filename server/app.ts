@@ -4,6 +4,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { listActions, recordAction, summarizeHook } from './actionlog.ts';
 import { answerAsk, askTeammate, closeAsk, inbox, markAnswersSeen, unreadCount } from './asks.ts';
 import { focusBrief, setFocus } from './focus.ts';
+import { createSetupLink, macScript, redeemSetupLink, setupPrompt } from './setup.ts';
 import {
   AGENT_TOKEN_PREFIX, SESSION_COOKIE, createSession, destroySession, hashPassword, listTeams, newSecret,
   requireUser, resolveActor, resolveUser, sha256, validatePassword, verifyPassword, type User,
@@ -88,6 +89,22 @@ function checkSignupCode(code: unknown) {
 
 // ---------- MCP endpoint for agents ----------
 app.all('/mcp', (c) => handleMcp(c));
+
+// ---------- One-time setup links ----------
+// `curl -fsSL <origin>/s/<code> | sh` (Mac) or `?as=prompt` (steps for Claude Code). Works once.
+app.get('/s/:code', async (c) => {
+  const origin = new URL(c.req.url).origin;
+  const asPrompt = c.req.query('as') === 'prompt';
+  c.header('cache-control', 'no-store');
+  try {
+    const { token, name } = await redeemSetupLink(c.req.param('code'));
+    return c.text(asPrompt ? setupPrompt(origin, `${origin}/mcp`, token) : macScript(origin, `${origin}/mcp`, token, name));
+  } catch (e) {
+    const msg = e instanceof RuleError ? e.message : 'Something went wrong. Make a new setup link in Platter.';
+    // Plain 200 so the message shows, instead of curl's bare "error 410".
+    return c.text(asPrompt ? `Platter setup failed: ${msg}\n` : `#!/bin/sh\necho ${JSON.stringify(`Platter setup: ${msg}`)}\nexit 1\n`);
+  }
+});
 
 const api = new Hono<Env>();
 
@@ -425,7 +442,22 @@ api.post('/agent-tokens', async (c) => {
     id, actor.workspace.id, actor.member.id, name, sha256(token), token.slice(0, AGENT_TOKEN_PREFIX.length + 4),
   ]);
   await logActivity(actor, { kind: 'agent_token', message: `connected agent "${name}"` });
-  return c.json({ id, token, mcpUrl: `${new URL(c.req.url).origin}/mcp` });
+  const link = await createSetupLink(id, token);
+  return c.json({ id, token, mcpUrl: `${new URL(c.req.url).origin}/mcp`, setup: link.code, setupExpiresInMinutes: link.expiresInMinutes });
+});
+
+/** Lost or expired setup link: give the agent a fresh key (the old one stops working) and a new link. */
+api.post('/agent-tokens/:id/relink', async (c) => {
+  const actor = actorOf(c);
+  requireHuman(actor);
+  const t = await one('SELECT * FROM agent_tokens WHERE workspace_id = $1 AND id = $2 AND revoked_at IS NULL', [actor.workspace.id, c.req.param('id')]);
+  if (!t) throw new RuleError('not_found', 'Agent not found', 404);
+  if (t.member_id !== actor.member.id) throw new RuleError('forbidden', 'You can only set up your own agents (P5)', 403);
+  const token = newSecret(AGENT_TOKEN_PREFIX);
+  await q('UPDATE agent_tokens SET token_hash = $2, token_prefix = $3 WHERE id = $1', [t.id, sha256(token), token.slice(0, AGENT_TOKEN_PREFIX.length + 4)]);
+  await q('UPDATE setup_links SET used_at = now() WHERE agent_token_id = $1 AND used_at IS NULL', [t.id]);
+  const link = await createSetupLink(t.id, token);
+  return c.json({ id: t.id, token, mcpUrl: `${new URL(c.req.url).origin}/mcp`, setup: link.code, setupExpiresInMinutes: link.expiresInMinutes });
 });
 
 api.delete('/agent-tokens/:id', async (c) => {
