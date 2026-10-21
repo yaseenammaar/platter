@@ -4,7 +4,7 @@ import { api, href, lastTeam, setTeam, type Team } from './api';
 import { BoardPage } from './pages/Board';
 import { FeedPage } from './pages/Feed';
 import { HomePage } from './pages/Home';
-import { Onboarding, TOUR_EVENT } from './Onboarding';
+import { Onboarding, TOUR_EVENT, openTour } from './Onboarding';
 import { NewTaskPage } from './pages/NewTask';
 import { SettingsPage } from './pages/Settings';
 import { TaskPage } from './pages/Task';
@@ -130,10 +130,13 @@ function TopBar() {
   return (
     <header className="topbar">
       <TeamSwitcher />
-      <button className="theme-btn" aria-label="Switch light / dark"
-        onClick={(e) => setTheme(isDark() ? 'light' : 'dark', { x: e.clientX, y: e.clientY })}>
-        <Sketch name={isDark() ? 'sun' : 'moon'} size={18} />
-      </button>
+      <span className="top-actions">
+        <button className="theme-btn help-btn" aria-label="How Platter works: take the tour" title="How Platter works" onClick={openTour}>?</button>
+        <button className="theme-btn" aria-label="Switch light / dark"
+          onClick={(e) => setTheme(isDark() ? 'light' : 'dark', { x: e.clientX, y: e.clientY })}>
+          <Sketch name={isDark() ? 'sun' : 'moon'} size={18} />
+        </button>
+      </span>
     </header>
   );
 }

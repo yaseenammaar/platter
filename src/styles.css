@@ -495,7 +495,6 @@ textarea.plain { border: 0; padding: 4px 0 14px; background: transparent; font-s
 .basic-icon { display: grid; }
 .rule-sec h3 { margin-top: 18px; }
 .rule-sec ul { margin: 0; padding-left: 18px; color: var(--body); font-size: 14px; display: flex; flex-direction: column; gap: 5px; }
-.appearance { margin-top: 40px; }
 .signout { margin-top: 24px; padding-top: 16px; border-top: 1px dashed var(--line); }
 
 /* ============ Small screens ============ */
@@ -660,7 +659,6 @@ textarea.plain { border: 0; padding: 4px 0 14px; background: transparent; font-s
 .tour-arrow { position: absolute; width: 16px; height: 16px; background: var(--surface); border: 1px solid var(--line); transform: translateX(-50%) rotate(45deg); }
 .tour-arrow.up { top: -9px; border-right: 0; border-bottom: 0; }
 .tour-arrow.down { bottom: -9px; border-left: 0; border-top: 0; }
-.appearance .replay { margin-top: 14px; }
 @media (prefers-reduced-motion: reduce) {
   .tour, .tour * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .tour-ring { stroke-dashoffset: 0; }
@@ -671,3 +669,5 @@ textarea.plain { border: 0; padding: 4px 0 14px; background: transparent; font-s
 .verify { margin-top: 10px; padding: 10px 14px; border-radius: 12px; background: var(--soft); font-size: 14px; color: var(--body); }
 .verify-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--t-orange-ink); animation: ob-pulse-dot 1.2s ease-in-out infinite; flex-shrink: 0; }
 @keyframes ob-pulse-dot { 50% { opacity: 0.3; transform: scale(0.7); } }
+.top-actions { display: inline-flex; align-items: center; gap: 8px; }
+.help-btn { font: 700 17px var(--font); line-height: 1; }

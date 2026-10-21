@@ -1,6 +1,6 @@
 // First-run tour of the real app. Each stop opens the right page, dims everything else,
 // draws a sketched outline around the thing to use, and says what it's for and how to use it.
-// Shown once per person; replay it from Settings.
+// Shown once per person; the ? button in the top bar replays it.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api, href } from './api';
@@ -8,7 +8,7 @@ import { Logo, Sketch, type SketchName } from './sketch';
 import { firstName, useApp } from './ui';
 
 export const TOUR_EVENT = 'platter:tour';
-/** Open the tour from anywhere (Settings → Replay). */
+/** Open the tour from anywhere (the ? button in the top bar). */
 export const openTour = () => window.dispatchEvent(new Event(TOUR_EVENT));
 
 const REDUCED = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;

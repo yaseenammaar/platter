@@ -51,7 +51,7 @@ In **Settings → My agent**, name your agent, then paste the one setup prompt i
 
 ### 6. A welcome tour
 
-The first time someone opens Platter, a short tour walks them through the real app. Each stop opens the right page, dims everything else, and draws a sketched outline around the thing to use: the team switcher, **New**, the board, the **Ask** bar, the Team page, the Feed, agent setup, and, for owners, Team rules. A card beside it says what it's for and how to use it. It shows once per person, on any device. Replay it from **Settings**.
+The first time someone opens Platter, a short tour walks them through the real app. Each stop opens the right page, dims everything else, and draws a sketched outline around the thing to use: the team switcher, **New**, the board, the **Ask** bar, the Team page, the Feed, agent setup, and, for owners, Team rules. A card beside it says what it's for and how to use it. It shows once per person, on any device. Replay it any time with the **?** button at the top.
 
 ### 7. Owner controls
 

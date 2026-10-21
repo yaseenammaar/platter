@@ -1,9 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { api, type Member, type Project, href } from '../api';
-import { openTour } from '../Onboarding';
 import type { SketchName } from '../sketch';
-import { Avatar, Battery, Copy, Empty, ErrorBox, Menu, Pip, Sketch, Switch, Text, firstName, isAdmin, timeAgo, toast, useAction, useApp, useLoad, useTheme, type Theme } from '../ui';
+import { Avatar, Battery, Copy, Empty, ErrorBox, Menu, Sketch, Switch, Text, firstName, isAdmin, timeAgo, toast, useAction, useApp, useLoad } from '../ui';
 
 export function SettingsPage() {
   const { me } = useApp();
@@ -22,7 +21,6 @@ export function SettingsPage() {
         <Route path="team-rules" element={<TeamRules />} />
         <Route path="rules" element={<Rules />} />
       </Routes>
-      <Appearance />
       <div className="signout">
         <button className="link-btn" onClick={async () => { await api.post('/logout'); location.href = '/'; }}>Sign out</button>
       </div>
@@ -295,25 +293,6 @@ function Rules() {
         ))}
       </details>
     </div>
-  );
-}
-
-// ---------- Appearance ----------
-function Appearance() {
-  const { theme, setTheme } = useTheme();
-  const opts: [Theme, SketchName, string][] = [['light', 'sun', 'Light'], ['dark', 'moon', 'Dark'], ['system', 'sparkle', 'Match my device']];
-  return (
-    <section className="section appearance">
-      <h2><span className="h-icon"><Pip size={30} mood="happy" /></span>Appearance</h2>
-      <div className="chips">
-        {opts.map(([v, icon, label]) => (
-          <button key={v} className={`toggle ${theme === v ? 'on' : ''}`} onClick={(e) => setTheme(v, { x: e.clientX, y: e.clientY })}>
-            <Sketch name={icon} size={15} /> {label}
-          </button>
-        ))}
-      </div>
-      <button type="button" className="link-btn small replay" onClick={openTour}><Sketch name="sparkle" size={14} /> Replay the welcome tour</button>
-    </section>
   );
 }
 
