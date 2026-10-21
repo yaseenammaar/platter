@@ -29,8 +29,11 @@ test('connecting gives a one-time setup link; the key is only stored sealed', as
   const mac = await get(`/s/${r.setup}`);
   assert.equal(mac.status, 200);
   assert.match(mac.text, /^#!\/bin\/sh/);
-  assert.ok(mac.text.includes(`Authorization: Bearer ${r.token}`), 'the script carries the key');
-  assert.match(mac.text, /claude mcp add --transport http --scope user platter 'http:\/\/test\.local\/mcp'/);
+  assert.ok(mac.text.includes(`PLATTER_KEY='${r.token}'`), 'the script carries the key');
+  assert.match(mac.text, /PLATTER_URL='http:\/\/test\.local\/mcp'/);
+  assert.match(mac.text, /claude mcp add --transport http --scope user platter "\$PLATTER_URL" --header "Authorization: Bearer \$PLATTER_KEY"/);
+  assert.match(mac.text, /pop\('platter'/, 'old keys in folder scopes are cleared too');
+  assert.match(mac.text, /401\) echo "Platter refused this key/);
   assert.match(mac.text, /checkin\.py"? --install/);
 
   const again = await get(`/s/${r.setup}`);

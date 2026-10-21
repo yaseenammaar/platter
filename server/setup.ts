@@ -51,23 +51,75 @@ const sh = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 const addCmd = (mcpUrl: string, token: string) =>
   `claude mcp add --transport http --scope user platter ${mcpUrl} --header "Authorization: Bearer ${token}"`;
 
-/** Mac: connect, check, and install Platter's free background check-in. Piped to sh. */
+/** Mac: connect, check, and install Platter's free background check-in. Piped to sh.
+ *  An old "platter" entry in a folder (local) scope beats the user-scope one, so a re-run that only
+ *  replaced the user entry kept sending a dead key (401). Clear every scope, then prove the key works. */
 export function macScript(origin: string, mcpUrl: string, token: string, name: string) {
   return `#!/bin/sh
 # Platter setup for "${name.replace(/[^\w .'-]/g, '')}". This link has now been used and won't work again.
 set -e
 command -v claude >/dev/null 2>&1 || { echo "Claude Code isn't installed (no 'claude' command). Install it, then make a new setup link in Platter."; exit 1; }
-echo "1/3 Connecting Platter to Claude Code…"
-claude mcp remove platter -s user >/dev/null 2>&1 || true
-claude mcp add --transport http --scope user platter ${sh(mcpUrl)} --header ${sh(`Authorization: Bearer ${token}`)} >/dev/null
-echo "2/3 Checking the connection…"
-claude mcp list 2>/dev/null | grep -i '^platter' || echo "   (couldn't list servers; Platter will still show when it hears from your agent)"
-echo "3/3 Installing the free background check-in…"
+command -v python3 >/dev/null 2>&1 || { echo "python3 is missing. Run 'xcode-select --install', then make a new setup link in Platter."; exit 1; }
+PLATTER_URL=${sh(mcpUrl)}
+PLATTER_KEY=${sh(token)}
+export PLATTER_URL PLATTER_KEY
+
+echo "1/4 Removing old Platter connections…"
+claude mcp remove platter -s user </dev/null >/dev/null 2>&1 || true
+python3 - <<'PY'
+import json, os, shutil, tempfile
+p = os.path.realpath(os.path.expanduser('~/.claude.json'))
+if not os.path.exists(p):
+    raise SystemExit
+cfg = json.load(open(p))
+gone = []
+if (cfg.get('mcpServers') or {}).pop('platter', None) is not None:
+    gone.append('every folder')
+for proj, v in (cfg.get('projects') or {}).items():
+    if isinstance(v, dict) and (v.get('mcpServers') or {}).pop('platter', None) is not None:
+        gone.append(proj)
+if gone:
+    shutil.copy2(p, p + '.before-platter')
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(p))
+    with os.fdopen(fd, 'w') as f:
+        json.dump(cfg, f, indent=2)
+    os.chmod(tmp, os.stat(p).st_mode & 0o777)
+    os.replace(tmp, p)
+    for g in gone:
+        print('   removed an old key for ' + g)
+PY
+
+echo "2/4 Connecting Platter to Claude Code…"
+claude mcp add --transport http --scope user platter "$PLATTER_URL" --header "Authorization: Bearer $PLATTER_KEY" </dev/null >/dev/null
+
+echo "3/4 Checking the connection…"
+code=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -X POST "$PLATTER_URL" -H "Authorization: Bearer $PLATTER_KEY" \\
+  -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' </dev/null) || code=000
+case "$code" in
+  200) echo "   Platter accepted the key." ;;
+  401) echo "Platter refused this key: it was replaced (New link) or disconnected after this link was made. Make a new setup link in Platter."; exit 1 ;;
+  *) echo "   Couldn't reach Platter (HTTP $code). The setup is saved; it will work once Platter is reachable." ;;
+esac
+python3 - <<'PY'
+import json, os
+cfg = json.load(open(os.path.expanduser('~/.claude.json')))
+mine = ((cfg.get('mcpServers') or {}).get('platter') or {}).get('headers', {}).get('Authorization')
+others = [k for k, v in (cfg.get('projects') or {}).items() if isinstance(v, dict) and 'platter' in (v.get('mcpServers') or {})]
+if mine != 'Bearer ' + os.environ['PLATTER_KEY']:
+    raise SystemExit('Claude Code did not save the new key. Run this setup again with a new link from Platter.')
+for k in others:
+    print('   warning: another Platter key is still set for ' + k)
+if os.path.exists('.mcp.json') and 'platter' in open('.mcp.json').read():
+    print('   warning: ./.mcp.json also defines "platter"; remove it there so this folder uses the new key')
+PY
+
+echo "4/4 Installing the free background check-in…"
 mkdir -p "$HOME/.platter"
 curl -fsSL ${sh(`${origin}/checkin.py`)} -o "$HOME/.platter/checkin.py"
-python3 "$HOME/.platter/checkin.py" --install
+python3 "$HOME/.platter/checkin.py" --install </dev/null
 echo ""
 echo "Done. Platter is connected. Back in Platter, step 2 turns green."
+echo "Restart Claude Code (quit the app, or open new sessions): sessions already open keep the old key."
 `;
 }
 
