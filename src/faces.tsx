@@ -1,5 +1,6 @@
-// Hand-drawn profile pictures. Every person gets a little doodled face picked from
-// their name — same name, same face, everywhere — inked in their tint colour.
+// Profile pictures: a little original pocket critter per person, picked from their name —
+// same name, same critter, everywhere. Soft pastel fills, thin coloured outlines, dot eyes
+// and blush: chibi, round and friendly.
 
 /** FNV-1a: small, stable, well spread. */
 function hash(s: string) {
@@ -18,81 +19,114 @@ function chooser(seed: number) {
   };
 }
 
-const HEADS = [{ rx: 8.4, ry: 8.9 }, { rx: 7.8, ry: 9.4 }, { rx: 8.9, ry: 8.5 }];
-
-// Hair drawn behind the head (long styles) and on top of it.
-const HAIR_BACK: Record<number, string> = {
-  4: 'M10.6 30.4c-1.8-8.2-1.4-15.2 1.9-18.9 3.9-4.3 11.1-4.3 15 0 3.3 3.7 3.7 10.7 1.9 18.9-1.2.4-2.4.4-3.6 0l-.4-6.2H14.6l-.4 6.2c-1.2.4-2.4.4-3.6 0z',
-};
-const HAIR: string[][] = [
-  ['M11.8 17.4c-.6-5.2 2.9-8.7 8.2-8.7s8.8 3.5 8.2 8.7c-1.7-2.5-3.8-3.7-6.6-3.9-2.7 1.7-6.1 2.3-9.8 3.9z'],
-  ['M11.7 18.2c-.9-6.2 3.4-9.9 8.7-9.7 4.5.2 8 3.1 7.9 8.8-3.5-.4-6.5-2-8.5-4.7-1.8 2.9-4.7 4.8-8.1 5.6z'],
-  [], // curly: drawn as loops below
-  ['M11.8 17.4c-.6-5.2 2.9-8.7 8.2-8.7s8.8 3.5 8.2 8.7c-2.4-2.2-5.2-3.3-8.2-3.3s-5.8 1.1-8.2 3.3z', 'M20 9.6c-1.9 0-3.4-1.5-3.4-3.3S18.1 3 20 3s3.4 1.5 3.4 3.3-1.5 3.3-3.4 3.3z'],
-  ['M12 16c2.7-.3 5.7-1.7 7.8-4.2 1.4 2.5 4.4 3.9 8.2 4.2-1-4.6-4-6.9-8-6.9s-7 2.4-8 6.9z'],
-  ['M11.9 16.6l.5-4.4 2.3 1.6.8-4.4 2.7 2.5 1.8-4.1 2 3.9 2.7-2.7.6 4.4 2.4-1.4.4 4.7c-2.9-1.5-5.8-2.1-9.1-2.1s-6.3.6-8.9 2z'],
-  ['M11.2 16.8c0-5.4 3.9-8.7 8.8-8.7s8.8 3.3 8.8 8.7z', 'M10.6 16.5c6.3-.5 12.5-.5 18.8 0l-.2 2.6c-6.1-.4-12.3-.4-18.4 0z', 'M20 8.2c-1 0-1.9-.8-1.9-1.8s.9-1.8 1.9-1.8 1.9.8 1.9 1.8-.9 1.8-1.9 1.8z'],
-  ['M16 11.4c1.4-.6 2.8-.8 4.2-.6'],
+/** Body colour + the slightly deeper outline drawn in that same hue. */
+const COATS = [
+  { name: 'mint', fill: '#cfe8e1', ink: '#5c9a8b' },
+  { name: 'sky', fill: '#cddff3', ink: '#5d86b3' },
+  { name: 'lilac', fill: '#e2d6f3', ink: '#8a70b8' },
+  { name: 'peach', fill: '#f9dcc4', ink: '#c4865a' },
+  { name: 'pink', fill: '#f6d3df', ink: '#c3708f' },
+  { name: 'butter', fill: '#f5e7b0', ink: '#b09234' },
+  { name: 'sage', fill: '#d8e8c6', ink: '#6f9556' },
+  { name: 'coral', fill: '#f4cbc2', ink: '#c56f60' },
+  { name: 'cloud', fill: '#dcdbe8', ink: '#77749a' },
 ];
-const CURLS = [[12.6, 15.2], [14.2, 12], [17, 10], [20.4, 9.3], [23.7, 10.1], [26.3, 12.2], [27.6, 15.4]];
+/** Don't put a sky-blue critter on a sky-blue circle. */
+const CLASH: Record<string, string[]> = {
+  blue: ['sky', 'cloud'], purple: ['lilac', 'cloud'], orange: ['peach', 'coral'],
+  yellow: ['butter', 'peach'], green: ['sage', 'mint'], pink: ['pink', 'coral'],
+};
+const BELLY = '#fff7ea';
+const EYE = '#3b3346';
+const BLUSH = '#f4a3b4';
 
-export function SketchFace({ name, size }: { name: string; size: number }) {
+// Head-and-body in one soft shape, running off the bottom of the circle.
+const BODIES = [
+  'M7 44c0-6 1.4-10.4 3.2-13.6C9 28.4 8.5 26.4 8.5 24.5 8.5 17.6 13.6 12 20 12s11.5 5.6 11.5 12.5c0 1.9-.5 3.9-1.7 5.9C31.6 33.6 33 38 33 44z',
+  'M4.5 44c0-8 2-13 4.8-16.4C8.8 20.8 13.6 14.6 20 14.6s11.2 6.2 10.7 13c2.8 3.4 4.8 8.4 4.8 16.4z',
+  'M8.6 44c0-6 1-10 2.7-13-1.4-2-2.1-4.2-2.1-6.6C9.2 17 14.1 11 20 11s10.8 6 10.8 13.4c0 2.4-.7 4.6-2.1 6.6 1.7 3 2.7 7 2.7 13z',
+];
+const HEAD_TOP = [12, 14.6, 11];
+
+/** Things on top of the head. `body` = drawn in the coat colour; `extra` = their own colour. */
+type Part = { d: string; fill?: 'body' | 'inner' | 'none' | string };
+const TOPS: Part[][] = [
+  // cat ears
+  [{ d: 'M10.6 19 9.8 10.4c-.1-1 1-1.6 1.8-1l6.2 5.2z', fill: 'body' }, { d: 'M29.4 19l.8-8.6c.1-1-1-1.6-1.8-1l-6.2 5.2z', fill: 'body' },
+    { d: 'M11.7 15.8l-.4-4.2 3.2 2.7z', fill: 'inner' }, { d: 'M28.3 15.8l.4-4.2-3.2 2.7z', fill: 'inner' }],
+  // long bunny ears
+  [{ d: 'M13.2 15.6c-1.8-4.6-1.8-9.6.4-11.6 2-1.6 4 2.6 4.4 9.6z', fill: 'body' }, { d: 'M26.8 15.6c1.8-4.6 1.8-9.6-.4-11.6-2-1.6-4 2.6-4.4 9.6z', fill: 'body' },
+    { d: 'M14.6 12.6c-.8-2.8-.7-5.4.2-6.4.9-.6 1.8 1.6 2 5.6z', fill: 'inner' }, { d: 'M25.4 12.6c.8-2.8.7-5.4-.2-6.4-.9-.6-1.8 1.6-2 5.6z', fill: 'inner' }],
+  // round bear ears
+  [{ d: 'M11.6 18.6a4 4 0 1 1 3.4-6.2', fill: 'body' }, { d: 'M28.4 18.6a4 4 0 1 0-3.4-6.2', fill: 'body' }],
+  // antennae with little bobbles
+  [{ d: 'M16.2 13.2c-1.2-2.8-3-4.6-5-5.2', fill: 'none' }, { d: 'M23.8 13.2c1.2-2.8 3-4.6 5-5.2', fill: 'none' },
+    { d: 'M10.9 9.9a1.9 1.9 0 1 1 .1-3.8 1.9 1.9 0 0 1-.1 3.8z', fill: 'body' }, { d: 'M29.1 9.9a1.9 1.9 0 1 0-.1-3.8 1.9 1.9 0 0 0 .1 3.8z', fill: 'body' }],
+  // one little horn
+  [{ d: 'M18 12.8l1.5-5.6c.1-.5.9-.5 1 0l1.5 5.6z', fill: '#f5e7b0' }],
+  // floppy side fins
+  [{ d: 'M9.6 22c-4-1-6.2 1.4-5.6 4.6.4 2 2.6 2.4 5.2 1.6z', fill: 'body' }, { d: 'M30.4 22c4-1 6.2 1.4 5.6 4.6-.4 2-2.6 2.4-5.2 1.6z', fill: 'body' }],
+  // a sprout
+  [{ d: 'M20 12.4c0-2 .4-3.4 1.2-4.4', fill: 'none' }, { d: 'M21.2 7.8c1.6-2.2 4.4-2.8 6.4-2-.6 2.4-3 4-6.4 2z', fill: '#d8e8c6' },
+    { d: 'M20.4 9.2c-1.4-1.6-3.6-2-5.2-1.2.6 1.8 2.6 2.8 5.2 1.2z', fill: '#d8e8c6' }],
+  // droopy puppy ears
+  [{ d: 'M11.8 15.6c-3.8.2-5.8 3.8-5.2 7.8.3 1.8 2 2.2 3.2.8z', fill: 'body' }, { d: 'M28.2 15.6c3.8.2 5.8 3.8 5.2 7.8-.3 1.8-2 2.2-3.2.8z', fill: 'body' }],
+  // a tuft of fluff
+  [{ d: 'M15.6 13.8c.2-2.4 1.6-3.8 3-3.4.4-1.6 2.4-2 3.4-.6 1.6-.4 3 1.2 2.4 3.6', fill: 'body' }],
+];
+
+export function SketchFace({ name, size, tint }: { name: string; size: number; tint?: string }) {
   const pick = chooser(hash(name.trim().toLowerCase()));
-  const head = HEADS[pick(HEADS.length)];
-  const hair = pick(HAIR.length);
+  const avoid = CLASH[tint ?? ''] ?? [];
+  const coats = COATS.filter((c) => !avoid.includes(c.name));
+  const coat = coats[pick(coats.length)];
+  const bodyIdx = pick(BODIES.length);
+  const top = TOPS[pick(TOPS.length)];
   const eyes = pick(5);
   const mouth = pick(5);
-  const brows = pick(3) === 0;
-  const collar = pick(3);
-  const extra = pick(6); // 0 freckles, 1 beard (short hair only), 2 earring
-  const beard = extra === 1 && hair !== 4;
-  const cy = 18.6;
-  const ink = { stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  const solid = { ...ink, fill: 'currentColor' };
-  const ly = cy + 0.6;
+  const marking = pick(5); // 0 none, 1 gem, 2 stripes, 3 freckles, 4 cheek spots
+  const belly = pick(3) !== 0;
+  const arms = pick(2) === 0;
+  const line = { stroke: coat.ink, strokeWidth: 1.25, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const fillOf = (f: Part['fill']) => (f === 'body' ? coat.fill : f === 'inner' ? BLUSH : f === 'none' ? 'none' : f ?? coat.fill);
+  const ey = 23.8 + (HEAD_TOP[bodyIdx] - 12) * 0.35;
+  const L = 15.5, R = 24.5;
+  const shine = (x: number, y: number) => <circle cx={x + 0.5} cy={y - 0.55} r={0.5} fill="#fff" />;
 
   return (
-    <svg className="face" width={size} height={size} viewBox="0 0 40 40" aria-hidden>
-      {/* shoulders & neck */}
-      <path d="M6.2 41.5c.9-6.6 5.8-10.4 13.8-10.4s12.9 3.8 13.8 10.4" fill="currentColor" fillOpacity={0.22} {...ink} />
-      {collar === 0 && <path d="M16.9 31.2l3.1 3.6 3.1-3.6" fill="none" {...ink} />}
-      {collar === 1 && <path d="M16.4 31.4c2.4 1.6 4.8 1.6 7.2 0" fill="none" {...ink} />}
-      <path d="M17.6 26.4v4.4M22.4 26.4v4.4" fill="none" {...ink} />
-      {HAIR_BACK[hair] && <path d={HAIR_BACK[hair]} {...solid} fillOpacity={0.9} />}
-      {/* ears + head */}
-      <path d={`M${20 - head.rx + 0.2} ${cy - 1.4}c-1.7-.5-2.6 1.2-1.7 2.7.4.7 1 .9 1.8.8`} fill="var(--surface)" {...ink} />
-      <path d={`M${20 + head.rx - 0.2} ${cy - 1.4}c1.7-.5 2.6 1.2 1.7 2.7-.4.7-1 .9-1.8.8`} fill="var(--surface)" {...ink} />
-      {extra === 2 && <circle cx={20 - head.rx - 0.6} cy={cy + 2.6} r={0.9} {...solid} />}
-      <ellipse cx="20" cy={cy} rx={head.rx} ry={head.ry} fill="var(--surface)" {...ink} />
-      {beard && <path d="M12.4 20.6c.5 5.9 3.4 8.7 7.6 8.7s7.1-2.8 7.6-8.7c-1.5 1.6-2.8 2.3-4.2 2.3-1 0-2-.8-3.4-.8s-2.4.8-3.4.8c-1.4 0-2.7-.7-4.2-2.3z" {...solid} />}
-      {/* hair on top */}
-      {hair === 2 ? CURLS.map(([x, y], i) => <circle key={i} cx={x} cy={y} r={2.5} {...solid} />) : HAIR[hair].map((d, i) => <path key={i} d={d} {...(hair === 7 ? { ...ink, fill: 'none' } : solid)} />)}
-      {/* brows */}
-      {brows && <path d={`M15 ${ly - 3}c1-.6 2.2-.7 3.2-.4M21.8 ${ly - 3.4}c1-.3 2.2-.2 3.2.4`} fill="none" {...ink} />}
-      {/* eyes */}
-      {eyes === 0 && <><circle cx="16.6" cy={ly} r="1.1" {...solid} strokeWidth={0} /><circle cx="23.4" cy={ly} r="1.1" {...solid} strokeWidth={0} /></>}
-      {eyes === 1 && <path d={`M15.3 ${ly + 0.5}c.7-1 1.9-1 2.6 0M22.1 ${ly + 0.5}c.7-1 1.9-1 2.6 0`} fill="none" {...ink} />}
-      {eyes === 2 && (
+    <svg className="face critter" width={size} height={size} viewBox="0 0 40 40" aria-hidden>
+      {/* things behind the head */}
+      {top.filter((p) => p.fill !== 'inner').map((p, i) => <path key={i} d={p.d} fill={fillOf(p.fill)} {...line} />)}
+      <path d={BODIES[bodyIdx]} fill={coat.fill} {...line} />
+      {top.filter((p) => p.fill === 'inner').map((p, i) => <path key={`in${i}`} d={p.d} fill={BLUSH} fillOpacity={0.75} stroke="none" />)}
+      {belly && <path d="M13.2 44c0-5.4 3-9.2 6.8-9.2s6.8 3.8 6.8 9.2z" fill={BELLY} {...line} strokeWidth={1} />}
+      {arms && (
         <>
-          <circle cx="16.4" cy={ly} r="2.7" fill="none" {...ink} />
-          <circle cx="23.6" cy={ly} r="2.7" fill="none" {...ink} />
-          <path d={`M19.1 ${ly - 0.2}c.6-.4 1.2-.4 1.8 0`} fill="none" {...ink} />
-          <circle cx="16.4" cy={ly} r=".85" {...solid} strokeWidth={0} /><circle cx="23.6" cy={ly} r=".85" {...solid} strokeWidth={0} />
+          <path d="M13.4 33.6c-2.1.1-3.5 1.6-3.3 3 .2 1.3 1.9 1.4 3.4.4z" fill={coat.fill} {...line} />
+          <path d="M26.6 33.6c2.1.1 3.5 1.6 3.3 3-.2 1.3-1.9 1.4-3.4.4z" fill={coat.fill} {...line} />
         </>
       )}
-      {eyes === 3 && <><circle cx="16.6" cy={ly} r="1.1" {...solid} strokeWidth={0} /><path d={`M22.1 ${ly + 0.4}c.7-.9 1.9-.9 2.6 0`} fill="none" {...ink} /></>}
-      {eyes === 4 && <><ellipse cx="16.6" cy={ly} rx="1.2" ry="1.6" {...solid} strokeWidth={0} /><ellipse cx="23.4" cy={ly} rx="1.2" ry="1.6" {...solid} strokeWidth={0} /></>}
-      {/* cheeks, freckles */}
-      <ellipse cx="14.4" cy={cy + 3.6} rx="1.7" ry="1" fill="currentColor" fillOpacity={0.2} />
-      <ellipse cx="25.6" cy={cy + 3.6} rx="1.7" ry="1" fill="currentColor" fillOpacity={0.2} />
-      {extra === 0 && [[14, 21.4], [15.4, 22.6], [24.6, 22.6], [26, 21.4]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r=".42" fill="currentColor" />)}
+      {/* markings */}
+      {marking === 1 && <circle cx="20" cy={ey - 5.4} r="1.25" fill="#f08aa3" stroke={coat.ink} strokeWidth={0.8} />}
+      {marking === 2 && <path d={`M17.8 ${ey - 9.6}l.5 2.2M20 ${ey - 10.2}v2.4M22.2 ${ey - 9.6}l-.5 2.2`} fill="none" {...line} />}
+      {marking === 3 && [[13.2, ey + 3.2], [14.3, ey + 4.1], [25.7, ey + 4.1], [26.8, ey + 3.2]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r=".38" fill={coat.ink} />)}
+      {/* cheeks */}
+      {marking === 4
+        ? <><circle cx="12.6" cy={ey + 3} r="1.9" fill="#f7b9a0" /><circle cx="27.4" cy={ey + 3} r="1.9" fill="#f7b9a0" /></>
+        : <><ellipse cx="13.2" cy={ey + 2.8} rx="1.6" ry=".95" fill={BLUSH} opacity={0.8} /><ellipse cx="26.8" cy={ey + 2.8} rx="1.6" ry=".95" fill={BLUSH} opacity={0.8} /></>}
+      {/* eyes */}
+      {eyes === 0 && <><circle cx={L} cy={ey} r="1.25" fill={EYE} /><circle cx={R} cy={ey} r="1.25" fill={EYE} /></>}
+      {eyes === 1 && <><circle cx={L} cy={ey} r="1.6" fill={EYE} />{shine(L, ey)}<circle cx={R} cy={ey} r="1.6" fill={EYE} />{shine(R, ey)}</>}
+      {eyes === 2 && <path d={`M${L - 1.3} ${ey + 0.5}c.7-1.1 1.9-1.1 2.6 0M${R - 1.3} ${ey + 0.5}c.7-1.1 1.9-1.1 2.6 0`} fill="none" stroke={EYE} strokeWidth={1.1} strokeLinecap="round" />}
+      {eyes === 3 && <path d={`M${L - 1.4} ${ey}h2.8M${R - 1.4} ${ey}h2.8`} stroke={EYE} strokeWidth={1.1} strokeLinecap="round" />}
+      {eyes === 4 && <><ellipse cx={L} cy={ey} rx="1.3" ry="1.75" fill={EYE} />{shine(L, ey)}<ellipse cx={R} cy={ey} rx="1.3" ry="1.75" fill={EYE} />{shine(R, ey)}</>}
       {/* mouth */}
-      <g stroke={beard ? 'var(--surface)' : 'currentColor'}>
-        {mouth === 0 && <path d="M17.4 23.8c1.5 1.4 3.7 1.4 5.2 0" fill="none" {...ink} stroke={undefined} />}
-        {mouth === 1 && <path d="M17 23.4c1.8 2.6 4.8 2.6 6 0z" fill={beard ? 'var(--surface)' : 'currentColor'} {...ink} stroke={undefined} />}
-        {mouth === 2 && <ellipse cx="20" cy="24.3" rx="1.1" ry="1.3" fill="none" {...ink} stroke={undefined} />}
-        {mouth === 3 && <path d="M17.9 24.4c1.4.4 2.9.2 4.2-.9" fill="none" {...ink} stroke={undefined} />}
-        {mouth === 4 && <path d="M17.6 23.6c.8.9 1.6.9 2.4 0s1.6-.9 2.4 0" fill="none" {...ink} stroke={undefined} />}
+      <g fill="none" stroke={EYE} strokeWidth={0.95} strokeLinecap="round" strokeLinejoin="round">
+        {mouth === 0 && <path d={`M18.2 ${ey + 2.8}c.5.7 1.3.7 1.8 0 .5.7 1.3.7 1.8 0`} />}
+        {mouth === 1 && <path d={`M18.6 ${ey + 2.8}c.8.8 2 .8 2.8 0`} />}
+        {mouth === 2 && <><path d={`M18.5 ${ey + 2.6}c.3 1.9 2.7 1.9 3 0z`} fill={EYE} /><path d={`M19.3 ${ey + 3.7}c.4.3 1 .3 1.4 0`} stroke={BLUSH} /></>}
+        {mouth === 3 && <><path d={`M18.4 ${ey + 2.8}c.9.8 2.3.8 3.2 0`} /><path d={`M20.6 ${ey + 3.3}l.3.8.4-.7`} fill="#fff" strokeWidth={0.6} /></>}
+        {mouth === 4 && <ellipse cx="20" cy={ey + 3.2} rx=".75" ry=".85" />}
       </g>
     </svg>
   );

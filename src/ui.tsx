@@ -156,12 +156,13 @@ export function timeAgo(d: string | null | undefined) {
 // ---------- Small components ----------
 const TINTS = ['blue', 'purple', 'orange', 'yellow', 'green', 'pink'];
 const tint = (s: string) => TINTS[[...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) % TINTS.length];
-/** Everyone's sketched profile picture, picked from their name. */
+/** Everyone's profile picture: their own little critter, picked from their name. */
 export function Avatar({ name, size = 24 }: { name?: string | null; size?: number }) {
   if (!name) return <span className="avatar empty" style={{ width: size, height: size, fontSize: size * 0.45 }} title="Nobody yet">?</span>;
+  const t = tint(name);
   return (
-    <span className={`avatar t-${tint(name)}`} title={name} role="img" aria-label={name} style={{ width: size, height: size }}>
-      <SketchFace name={name} size={size} />
+    <span className={`avatar t-${t}`} title={name} role="img" aria-label={name} style={{ width: size, height: size }}>
+      <SketchFace name={name} size={size} tint={t} />
     </span>
   );
 }

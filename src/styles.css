@@ -559,7 +559,7 @@ textarea.plain { border: 0; padding: 4px 0 14px; background: transparent; font-s
 
 /* ============ Sketched profile pictures ============ */
 .avatar { overflow: hidden; position: relative; }
-.avatar .face { display: block; filter: url(#wobble); }
+.avatar .face { display: block; }
 
 /* ============ Switch ============ */
 .switch { width: 44px; height: 26px; border-radius: 999px; border: 1px solid var(--line); background: var(--soft); padding: 2px; cursor: pointer; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
