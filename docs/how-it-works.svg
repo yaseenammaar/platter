@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 468" width="960" height="468" role="img" aria-labelledby="t d">
+  <title id="t">How Platter works</title>
+  <desc id="d">A task travels along a conveyor: you write it with a done-when list, your agent picks it up and shows proof, a teammate's agent checks it, and it is served. Below: an agent low on energy passes its plate to a teammate's agent, and a question to a teammate gets an answer back.</desc>
+  <defs>
+    <filter id="wob" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4"/>
+      <feDisplacementMap in="SourceGraphic" scale="1.6"/>
+    </filter>
+    <g id="bot">
+      <path d="M0 -36v-7"/><circle cx="0" cy="-46" r="2.8"/>
+      <rect x="-17" y="-36" width="34" height="27" rx="8" fill="#fff"/>
+      <circle cx="-7" cy="-23" r="2" fill="#111" stroke="none"/><circle cx="7" cy="-23" r="2" fill="#111" stroke="none"/>
+      <path d="M-5 -16c3 2 7 2 10 0"/>
+      <path d="M-20 4c1-8 7-12 20-12s19 4 20 12"/>
+    </g>
+    <g id="person">
+      <circle cx="0" cy="-26" r="11" fill="#fff"/>
+      <path d="M-4 -27h.1M4 -27h.1"/><path d="M-4 -21c2.5 2 5.5 2 8 0"/>
+      <path d="M-20 4c1-9 8-14 20-14s19 5 20 14"/>
+    </g>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #111; }
+    .muted { fill: #6b7280; }
+    .ink { fill: none; stroke: #111; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .sk { filter: url(#wob); }
+    .a { animation-duration: 14s; animation-iteration-count: infinite; animation-timing-function: cubic-bezier(.45,0,.25,1); }
+    .belt { stroke-dasharray: 2 14; animation: belt 0.9s linear infinite; }
+    @keyframes belt { to { stroke-dashoffset: -16; } }
+
+    /* the plate travels station to station */
+    .plate { animation-name: plate; }
+    @keyframes plate {
+      0%, 10% { transform: translate(130px,172px); opacity: 1; }
+      16%, 30% { transform: translate(305px,172px); }
+      36%, 52% { transform: translate(480px,172px); }
+      58%, 72% { transform: translate(655px,172px); }
+      78%, 93% { transform: translate(830px,172px); opacity: 1; }
+      97% { transform: translate(830px,172px); opacity: 0; }
+      98% { transform: translate(130px,172px); opacity: 0; }
+      100% { transform: translate(130px,172px); opacity: 1; }
+    }
+    /* 1. written */
+    .w0 { transform-box: fill-box; transform-origin: left; animation-name: w0; }
+    @keyframes w0 { 0%,1% { transform: scaleX(0); } 4%,97% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+    .w1, .w2 { stroke-dasharray: 60; }
+    .w1 { animation-name: w1; } .w2 { animation-name: w2; }
+    @keyframes w1 { 0%,3% { stroke-dashoffset: 60; } 6%,97% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 60; } }
+    @keyframes w2 { 0%,6% { stroke-dashoffset: 60; } 9%,97% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 60; } }
+    /* 3. proof */
+    .t1, .t2 { stroke-dasharray: 16; }
+    .t1 { animation-name: t1; } .t2 { animation-name: t2; }
+    @keyframes t1 { 0%,39% { stroke-dashoffset: 16; } 43%,97% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 16; } }
+    @keyframes t2 { 0%,45% { stroke-dashoffset: 16; } 49%,97% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 16; } }
+    /* 4. checked: boxes turn pistachio */
+    .box { animation-name: box; }
+    @keyframes box { 0%,63% { fill: #fff; } 66%,97% { fill: #93c572; } 100% { fill: #fff; } }
+    /* station pills light up while the plate is there */
+    .s1 { animation-name: s1; } .s2 { animation-name: s2; } .s3 { animation-name: s3; } .s4 { animation-name: s4; } .s5 { animation-name: s5; }
+    @keyframes s1 { 0%,10% { fill: #d9edc9; } 13%,97% { fill: #fff; } 100% { fill: #d9edc9; } }
+    @keyframes s2 { 0%,14% { fill: #fff; } 17%,30% { fill: #d9edc9; } 33%,100% { fill: #fff; } }
+    @keyframes s3 { 0%,34% { fill: #fff; } 37%,52% { fill: #d9edc9; } 55%,100% { fill: #fff; } }
+    @keyframes s4 { 0%,56% { fill: #fff; } 59%,72% { fill: #d9edc9; } 75%,100% { fill: #fff; } }
+    @keyframes s5 { 0%,76% { fill: #fff; } 79%,94% { fill: #d9edc9; } 97%,100% { fill: #fff; } }
+    /* 2. agent thinking dots */
+    .think { animation-name: think; }
+    @keyframes think { 0%,15% { opacity: 0; } 17%,30% { opacity: 1; } 32%,100% { opacity: 0; } }
+    .dot { animation: blink 0.9s ease-in-out infinite; }
+    .dot:nth-child(2) { animation-delay: .15s; } .dot:nth-child(3) { animation-delay: .3s; }
+    @keyframes blink { 50% { opacity: .15; } }
+    /* 4. magnifier wiggles */
+    .mag { transform-box: fill-box; transform-origin: 20% 80%; animation-name: mag; }
+    @keyframes mag { 0%,58% { transform: rotate(0); } 61% { transform: rotate(-16deg); } 64% { transform: rotate(10deg); } 67% { transform: rotate(-8deg); } 70%,100% { transform: rotate(0); } }
+    /* 5. cloche drops on, then lifts */
+    .cloche { animation-name: cloche; }
+    @keyframes cloche {
+      0%,74% { transform: translate(830px,120px) rotate(0deg); opacity: 0; }
+      78% { transform: translate(830px,172px) rotate(0deg); opacity: 1; }
+      82% { transform: translate(830px,172px) rotate(0deg); opacity: 1; }
+      88% { transform: translate(842px,104px) rotate(14deg); opacity: 1; }
+      94% { transform: translate(842px,104px) rotate(14deg); opacity: 0; }
+      100% { transform: translate(830px,120px) rotate(0deg); opacity: 0; }
+    }
+    .spark { transform-box: fill-box; transform-origin: center; animation-name: spark; }
+    @keyframes spark { 0%,85% { transform: scale(0); opacity: 0; } 88% { transform: scale(1.25); opacity: 1; } 95% { transform: scale(1); opacity: 0; } 100% { transform: scale(0); opacity: 0; } }
+    .served { transform-box: fill-box; transform-origin: center; animation-name: served; }
+    @keyframes served { 0%,85% { transform: scale(.6); opacity: 0; } 88% { transform: scale(1.08); opacity: 1; } 91%,95% { transform: scale(1); opacity: 1; } 98%,100% { opacity: 0; } }
+
+    /* handoff panel */
+    .drain { transform-box: fill-box; transform-origin: left; animation-name: drain; }
+    @keyframes drain { 0%,6% { transform: scaleX(1); fill: #93c572; } 45% { transform: scaleX(.12); fill: #f59e0b; } 50%,95% { transform: scaleX(.08); fill: #ef4444; } 100% { transform: scaleX(1); fill: #93c572; } }
+    .pass { animation-name: pass; }
+    @keyframes pass { 0%,52% { transform: translate(178px,393px); } 68%,94% { transform: translate(318px,393px); opacity: 1; } 97% { opacity: 0; } 98% { transform: translate(178px,393px); opacity: 0; } 100% { opacity: 1; } }
+    .lowtag { animation-name: lowtag; }
+    @keyframes lowtag { 0%,44% { opacity: 0; } 48%,95% { opacity: 1; } 100% { opacity: 0; } }
+
+    /* check-in panel */
+    .b1 { transform-box: fill-box; transform-origin: 10% 100%; animation-name: b1; }
+    @keyframes b1 { 0%,5% { transform: scale(0); } 9%,94% { transform: scale(1); } 98%,100% { transform: scale(0); } }
+    .b2 { transform-box: fill-box; transform-origin: 90% 100%; animation-name: b2; }
+    @keyframes b2 { 0%,33% { transform: scale(0); } 37%,94% { transform: scale(1); } 98%,100% { transform: scale(0); } }
+    .msg { animation-name: msg; }
+    @keyframes msg { 0%,12% { transform: translate(620px,398px); opacity: 0; } 14% { opacity: 1; } 28% { transform: translate(800px,398px); opacity: 1; } 30% { opacity: 0; }
+      40% { transform: translate(800px,398px); opacity: 0; } 42% { opacity: 1; } 56% { transform: translate(620px,398px); opacity: 1; } 58%,100% { transform: translate(620px,398px); opacity: 0; } }
+    .got { transform-box: fill-box; transform-origin: center; animation-name: got; }
+    @keyframes got { 0%,57% { transform: scale(0); } 61%,94% { transform: scale(1); } 98%,100% { transform: scale(0); } }
+
+    .pip { animation: bob 3s ease-in-out infinite; }
+    @keyframes bob { 50% { transform: translate(872px,40px) rotate(4deg); } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+
+  <rect width="960" height="468" rx="22" fill="#faf8f4"/>
+
+  <!-- header -->
+  <text x="40" y="52" font-size="24" font-weight="700" letter-spacing="-0.5">How Platter works</text>
+  <text x="40" y="76" font-size="14" class="muted">Tasks ride the platter. People plan and decide, agents do the work, and nobody checks their own.</text>
+  <g class="pip sk" style="transform: translate(872px,46px)">
+    <path class="ink" d="M-26 4 18 -16 6 24 -4 10z" fill="#fff"/><path class="ink" d="M-26 4 18 -16 -4 10z" fill="#d9edc9"/>
+    <path class="ink" d="M-4 10 18 -16M-4 10l-3 9 6-5"/>
+    <circle cx="-7" cy="4" r="1.3"/><circle cx="1" cy="1.5" r="1.3"/>
+  </g>
+
+  <g transform="translate(0 28)">
+  <!-- characters at each station -->
+  <g class="ink sk">
+    <use href="#person" transform="translate(130 128)"/>
+    <path d="M150 112l12-14 4 4-12 14-5 1z"/>
+    <use href="#bot" transform="translate(305 128)"/>
+    <use href="#bot" transform="translate(480 128)"/>
+    <path d="M500 96h18v22h-18z" fill="#fff"/><path d="M504 103l2.5 2.5 5-5M504 112l2.5 2.5 5-5"/>
+    <use href="#bot" transform="translate(655 128)"/>
+    <g class="mag a"><circle cx="684" cy="96" r="9" fill="#fff"/><path d="M677 103l-9 9"/></g>
+  </g>
+  <g class="think a">
+    <circle class="dot" cx="327" cy="88" r="3" fill="#111"/><circle class="dot" cx="337" cy="88" r="3" fill="#111"/><circle class="dot" cx="347" cy="88" r="3" fill="#111"/>
+  </g>
+  <g class="sk">
+    <path class="spark a" d="M792 112l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#93c572" stroke="#111" stroke-width="1.4"/>
+    <path class="spark a" d="M872 104l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" fill="#fde68a" stroke="#111" stroke-width="1.4" style="animation-delay:.2s"/>
+    <path class="spark a" d="M880 146l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#93c572" stroke="#111" stroke-width="1.4" style="animation-delay:.35s"/>
+  </g>
+  <g class="served a"><rect x="782" y="72" width="96" height="28" rx="14" fill="#111"/><text x="830" y="91" font-size="14" font-weight="700" text-anchor="middle" fill="#fff" style="fill:#fff">Served!</text></g>
+
+  <!-- the conveyor -->
+  <rect x="40" y="206" width="880" height="16" rx="8" fill="#fff" stroke="#111" stroke-width="1.6" class="sk"/>
+  <path class="belt" d="M52 214H908" stroke="#111" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- the task plate -->
+  <g class="plate a">
+    <g class="sk">
+      <ellipse cx="0" cy="34" rx="62" ry="6" fill="#e5e7eb"/>
+      <rect x="-54" y="-32" width="108" height="64" rx="11" fill="#fff" stroke="#111" stroke-width="1.6"/>
+      <rect class="w0 a" x="-42" y="-22" width="62" height="6" rx="3" fill="#111"/>
+      <circle class="box a" cx="-36" cy="-2" r="6" stroke="#111" stroke-width="1.5"/>
+      <circle class="box a" cx="-36" cy="16" r="6" stroke="#111" stroke-width="1.5"/>
+      <path class="w1 a ink" d="M-24 -2H38" stroke="#9ca3af"/>
+      <path class="w2 a ink" d="M-24 16H24" stroke="#9ca3af"/>
+      <path class="t1 a ink" d="M-39 -2l2.5 2.5 5-5"/>
+      <path class="t2 a ink" d="M-39 16l2.5 2.5 5-5"/>
+    </g>
+  </g>
+  <g class="cloche a">
+    <g class="ink sk"><path d="M-64 30C-64 -44 64 -44 64 30z" fill="#faf8f4"/><circle cx="0" cy="-38" r="5" fill="#fff"/><path d="M-70 30h140"/></g>
+  </g>
+
+  <!-- station labels -->
+  <g font-size="13" font-weight="600" text-anchor="middle">
+    <rect class="s1 a" x="78" y="236" width="104" height="28" rx="14" stroke="#111" stroke-width="1.2" fill="#fff"/><text x="130" y="255">1 · You write it</text>
+    <rect class="s2 a" x="241" y="236" width="128" height="28" rx="14" stroke="#111" stroke-width="1.2" fill="#fff"/><text x="305" y="255">2 · Agent picks up</text>
+    <rect class="s3 a" x="420" y="236" width="120" height="28" rx="14" stroke="#111" stroke-width="1.2" fill="#fff"/><text x="480" y="255">3 · Shows proof</text>
+    <rect class="s4 a" x="583" y="236" width="144" height="28" rx="14" stroke="#111" stroke-width="1.2" fill="#fff"/><text x="655" y="255">4 · Teammate checks</text>
+    <rect class="s5 a" x="786" y="236" width="88" height="28" rx="14" stroke="#111" stroke-width="1.2" fill="#fff"/><text x="830" y="255">5 · Served</text>
+  </g>
+
+  <!-- panel: handoff -->
+  <rect x="40" y="288" width="430" height="134" rx="16" fill="#fff" stroke="#e5e7eb"/>
+  <text x="60" y="316" font-size="15" font-weight="700">Running low? The plate moves on.</text>
+  <text x="60" y="335" font-size="12.5" class="muted">When an agent runs low, a teammate's agent takes over.</text>
+  <g class="ink sk"><use href="#bot" transform="translate(110 404) scale(.8)"/><use href="#bot" transform="translate(400 404) scale(.8)"/></g>
+  <g class="sk">
+    <rect x="134" y="364" width="28" height="13" rx="3" fill="#fff" stroke="#111" stroke-width="1.5"/><rect x="162" y="368" width="2.5" height="5" fill="#111"/>
+    <rect class="drain a" x="136.5" y="366.5" width="23" height="8" rx="1.5" fill="#93c572"/>
+    <rect x="424" y="364" width="28" height="13" rx="3" fill="#fff" stroke="#111" stroke-width="1.5"/><rect x="452" y="368" width="2.5" height="5" fill="#111"/>
+    <rect x="426.5" y="366.5" width="20" height="8" rx="1.5" fill="#93c572"/>
+  </g>
+  <text class="lowtag a" x="134" y="358" font-size="11" font-weight="700" fill="#ef4444" style="fill:#ef4444">3% left</text>
+  <g class="pass a"><g class="sk"><rect x="-20" y="-12" width="40" height="24" rx="6" fill="#fff" stroke="#111" stroke-width="1.5"/><path d="M-12 -4h18M-12 4h12" stroke="#9ca3af" stroke-width="1.6" stroke-linecap="round"/></g></g>
+
+  <!-- panel: check-ins -->
+  <rect x="490" y="288" width="430" height="134" rx="16" fill="#fff" stroke="#e5e7eb"/>
+  <text x="510" y="316" font-size="15" font-weight="700">Just ask. The answer comes back.</text>
+  <text x="510" y="335" font-size="12.5" class="muted">Ask a teammate; their agent replies if it actually knows.</text>
+  <g class="ink sk"><use href="#bot" transform="translate(560 404) scale(.8)"/><use href="#bot" transform="translate(860 404) scale(.8)"/></g>
+  <g class="b1 a"><rect x="584" y="350" width="104" height="26" rx="13" fill="#d9edc9" stroke="#111" stroke-width="1.2"/><text x="636" y="368" font-size="12.5" text-anchor="middle">any update?</text></g>
+  <g class="b2 a"><rect x="724" y="350" width="112" height="26" rx="13" fill="#f3e8ff" stroke="#111" stroke-width="1.2"/><text x="780" y="368" font-size="12.5" text-anchor="middle">done by Friday</text></g>
+  <g class="msg a"><circle r="5" fill="#93c572" stroke="#111" stroke-width="1.3"/></g>
+  <g class="got a"><circle cx="590" cy="398" r="9" fill="#93c572" stroke="#111" stroke-width="1.4"/><path d="M586 398l3 3 5-6" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round"/></g>
+  </g>
+</svg>

@@ -1,5 +1,9 @@
 # Platter
 
+<p align="center">
+  <img src="docs/how-it-works.svg" alt="How Platter works: a task rides a conveyor — you write it, your agent picks it up and shows proof, a teammate's agent checks it, and it's served. Agents low on energy pass the plate on, and questions to teammates get answers back." width="100%">
+</p>
+
 A team task board built for **humans + their AI agents**. You assign tasks to people; each person's agent (Claude Code, Cursor, …) picks the task up over MCP with full context, posts progress, and submits evidence. The reviewer's agent then verifies it against the acceptance criteria. When someone's agent runs out of usage, it hands its unfinished work to a teammate's agent that still has capacity. And you can check in on anyone: *"ask a teammate for an update"* goes to that person or their agent, and the answer comes back to yours.
 
 **Built for many teams.** Anyone can start a team (optionally gated by a signup code), and each team is fully isolated: its people, projects, tasks, agents, check-ins and activity never mix with another team's. One person can belong to several teams with a different role in each, and switch between them from the team name in the top-left. Every team lives at its own address, `/t/<team>/…`.
