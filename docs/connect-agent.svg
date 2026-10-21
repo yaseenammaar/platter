@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" width="960" height="320" role="img" aria-labelledby="t d">
+  <title id="t">Connect your agent</title>
+  <desc id="d">Three steps: name your agent in Settings and press Connect; paste one command into your terminal, which reports Connected; then just talk to your agent, for example asking it to pick up your next Platter task.</desc>
+  <defs>
+    <filter id="wob" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="2"/>
+      <feDisplacementMap in="SourceGraphic" scale="1.4"/>
+    </filter>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #111; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .muted { fill: #6b7280; }
+    .sk { filter: url(#wob); }
+    .a { animation-duration: 12s; animation-iteration-count: infinite; animation-timing-function: cubic-bezier(.45,0,.25,1); }
+    .pop { transform-box: fill-box; transform-origin: center; }
+    /* 1. name + connect */
+    .type1, .type2 { transform-box: fill-box; transform-origin: right; }
+    .type1 { animation-name: type1; animation-timing-function: steps(11); }
+    @keyframes type1 { 0%,2% { transform: scaleX(1); } 12%,100% { transform: scaleX(0); } }
+    .press { animation-name: press; }
+    @keyframes press { 0%,14% { transform: scale(1); } 16% { transform: scale(.9); } 18%,100% { transform: scale(1); } }
+    .key { animation-name: key; }
+    @keyframes key { 0%,17% { transform: scale(0); } 20% { transform: scale(1.15); } 22%,95% { transform: scale(1); } 98%,100% { transform: scale(0); } }
+    /* 2. terminal typing */
+    .type2 { animation-name: type2; animation-timing-function: steps(30); }
+    @keyframes type2 { 0%,24% { transform: scaleX(1); } 40%,100% { transform: scaleX(0); } }
+    .ok { animation-name: ok; }
+    @keyframes ok { 0%,43% { opacity: 0; } 45%,95% { opacity: 1; } 98%,100% { opacity: 0; } }
+    .caret { animation: caret 1s steps(1) infinite; }
+    @keyframes caret { 50% { opacity: 0; } }
+    /* 3. chat */
+    .m1 { transform-origin: 100% 100%; animation-name: m1; }
+    @keyframes m1 { 0%,52% { transform: scale(0); } 56%,95% { transform: scale(1); } 98%,100% { transform: scale(0); } }
+    .m2 { transform-origin: 0% 100%; animation-name: m2; }
+    @keyframes m2 { 0%,66% { transform: scale(0); } 70%,95% { transform: scale(1); } 98%,100% { transform: scale(0); } }
+    .dots { animation-name: dots; }
+    @keyframes dots { 0%,57% { opacity: 0; } 59%,65% { opacity: 1; } 67%,100% { opacity: 0; } }
+    .dot { animation: blink .9s ease-in-out infinite; }
+    .dot:nth-child(2) { animation-delay: .15s; } .dot:nth-child(3) { animation-delay: .3s; }
+    @keyframes blink { 50% { opacity: .15; } }
+    .step { animation-duration: 12s; animation-iteration-count: infinite; }
+    .st1 { animation-name: st1; } .st2 { animation-name: st2; } .st3 { animation-name: st3; }
+    @keyframes st1 { 0%,22% { fill: #d9edc9; } 25%,100% { fill: #fff; } }
+    @keyframes st2 { 0%,22% { fill: #fff; } 25%,50% { fill: #d9edc9; } 53%,100% { fill: #fff; } }
+    @keyframes st3 { 0%,50% { fill: #fff; } 53%,97% { fill: #d9edc9; } 100% { fill: #fff; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+
+  <rect width="960" height="320" rx="22" fill="#faf8f4"/>
+  <text x="40" y="50" font-size="22" font-weight="700" letter-spacing="-0.5">Connect your agent</text>
+  <text x="40" y="74" font-size="14" class="muted">Three steps. After that your agent works for you, inside your team.</text>
+
+  <!-- step pills -->
+  <g font-size="13" font-weight="700">
+    <circle class="step st1" cx="62" cy="108" r="13" stroke="#111" stroke-width="1.3"/><text x="62" y="113" text-anchor="middle">1</text><text x="84" y="113">Name it</text>
+    <circle class="step st2" cx="352" cy="108" r="13" stroke="#111" stroke-width="1.3"/><text x="352" y="113" text-anchor="middle">2</text><text x="374" y="113">Paste one line</text>
+    <circle class="step st3" cx="662" cy="108" r="13" stroke="#111" stroke-width="1.3"/><text x="662" y="113" text-anchor="middle">3</text><text x="684" y="113">Just talk to it</text>
+  </g>
+
+  <!-- 1. Settings: name + connect -->
+  <g class="sk"><rect x="40" y="132" width="270" height="150" rx="16" fill="#fff" stroke="#111" stroke-width="1.4"/></g>
+  <text x="58" y="160" font-size="12" class="muted">Settings → My agent</text>
+  <rect x="58" y="172" width="150" height="34" rx="10" fill="#fff" stroke="#d1d5db"/>
+  <text x="70" y="194" font-size="13.5">Claude Code</text>
+  <rect class="type1 a" x="68" y="178" width="96" height="22" fill="#fff"/>
+  <g class="press a pop"><rect x="216" y="172" width="78" height="34" rx="17" fill="#93c572"/><text x="255" y="194" font-size="13" font-weight="700" text-anchor="middle">Connect</text></g>
+  <g class="key a pop"><rect x="58" y="222" width="236" height="40" rx="10" fill="#eaf4e1"/>
+    <text x="70" y="246" font-size="12" font-weight="600" fill="#3f6b26" style="fill:#3f6b26">Your one-line command is ready</text></g>
+
+  <!-- 2. terminal -->
+  <rect x="330" y="132" width="290" height="150" rx="16" fill="#111827"/>
+  <circle cx="350" cy="150" r="4.5" fill="#ef4444"/><circle cx="364" cy="150" r="4.5" fill="#f59e0b"/><circle cx="378" cy="150" r="4.5" fill="#93c572"/>
+  <text x="346" y="186" font-size="12" class="mono" fill="#d1d5db" style="fill:#d1d5db">$ claude mcp add … platter …</text>
+  <rect class="type2 a" x="358" y="172" width="236" height="20" fill="#111827"/>
+  <g class="ok a"><text x="346" y="214" font-size="12" class="mono" fill="#93c572" style="fill:#93c572">✔ Connected</text>
+    <text x="346" y="236" font-size="12" class="mono" fill="#9ca3af" style="fill:#9ca3af">platter tools ready</text>
+    <rect class="caret" x="346" y="250" width="8" height="14" fill="#d1d5db"/></g>
+
+  <!-- 3. chat -->
+  <g class="sk"><rect x="640" y="132" width="280" height="150" rx="16" fill="#fff" stroke="#111" stroke-width="1.4"/></g>
+  <g class="m1 a pop"><rect x="700" y="150" width="204" height="34" rx="14" fill="#d9edc9" stroke="#111" stroke-width="1.1"/><text x="714" y="172" font-size="12.5">Pick up my next Platter task</text></g>
+  <g class="dots a"><circle class="dot" cx="672" cy="210" r="3" fill="#111"/><circle class="dot" cx="682" cy="210" r="3" fill="#111"/><circle class="dot" cx="692" cy="210" r="3" fill="#111"/></g>
+  <g class="m2 a pop"><rect x="656" y="196" width="236" height="56" rx="14" fill="#f3e8ff" stroke="#111" stroke-width="1.1"/>
+    <text x="670" y="218" font-size="12.5">Started your top task. I'll post</text><text x="670" y="236" font-size="12.5">progress and send proof for review.</text></g>
+
+  <text x="480" y="306" font-size="12.5" text-anchor="middle" class="muted">Works with Claude Code, Cursor and any MCP client. Each token belongs to one person in one team.</text>
+</svg>

@@ -10,32 +10,46 @@ A team task board built for **humans + their AI agents**. You assign tasks to pe
 
 The app has four places to go: **Home** (what needs you, check-ins, team energy), **Board**, **Team** and **Feed**. Agent setup, projects and the rulebook live in **Settings**.
 
-Everything is enforced by one rulebook ([`server/rules.ts`](server/rules.ts), rendered in [RULES.md](RULES.md) and the in-app **Rules** page). It applies equally to people clicking buttons and agents calling tools.
-
 ## How it works
 
-```
- Backlog ──(human: Definition of Ready)──▶ Ready ──(assignee's agent: start_task)──▶ In progress
-                                                                                       │  log_progress / report_usage
-                                         ┌──── handoff_task ◀── usage running out ─────┤
-                                         ▼                                             │
-                         teammate's agent with capacity: take_over_task ──────────────▶│
-                                                                                       ▼ submit_for_review (evidence per criterion)
-                                  Done ◀──(reviewer's agent: review_task approve)── In review
-                                                      reject + notes ──▶ back to In progress
-```
+### 1. Quality gates
 
-- **Context pack:** `get_task` gives the agent the description, context, project instructions (repo, test commands, conventions), acceptance criteria, dependencies, previous review feedback, handoff notes and recent discussion.
-- **Quality gates:**
-  - A task must meet the Definition of Ready (criteria, assignee, and a reviewer who isn't the assignee) before work starts.
-  - Criteria freeze once work starts.
-  - A submission needs evidence for every criterion.
-  - The reviewer must give a pass/fail on every criterion and can never review their own work.
-  - Tasks rejected 3 times get flagged.
-- **Capacity:** agents report the % of usage limit left. Under 10% an agent can't start work. Taking over someone else's handoff needs at least 25%. If an exhausted agent goes silent for 60 minutes, its task is offered for takeover automatically.
-- **People:** invite-only, with roles (owner / admin / member / viewer). Suspending someone revokes their sessions and agent tokens instantly and returns their work to the backlog. The Team page shows each person's workload and rework.
-- **Check-ins:** `ask_teammate` sends a question to a person, and the asker gets what the board already knows right away. The recipient's agent answers with `answer_question`, but only from what it actually knows (agent answers are labelled). Otherwise the person answers it from Home. Answers come back through `check_inbox`.
-- **Visibility:** a live board, a story timeline on every task, and a Feed of everything people and agents do.
+<p align="center"><img src="docs/quality-gates.svg" alt="A task card passes four gates: Ready (a done-when list, someone doing it, a different checker), Started (dependencies done, under the WIP limit, criteria locked), Proof (evidence for every item), Checked (every item judged, never your own work), then Done." width="100%"></p>
+
+Every task passes the same four gates, whether a person or an agent is moving it:
+
+- **Ready:** a clear title, the why, a "done when" list, someone to do it, and a *different* person to check it.
+- **Started:** dependencies are done and the doer is under the WIP limit. From here the "done when" list is locked, so the goalposts can't move.
+- **Proof:** the submission needs evidence for every item: what changed, where, and how it was checked.
+- **Checked:** the reviewer (or their agent) judges each item pass or fail. Nobody checks their own work. Anything that fails goes back with notes, and tasks that bounce 3 times get flagged.
+
+Before starting, `get_task` hands the agent a full context pack: the description, notes for the agent, project instructions (repo, test commands, conventions), dependencies, earlier review feedback, handoff notes and recent discussion.
+
+### 2. Energy & handoffs
+
+<p align="center"><img src="docs/handoff.svg" alt="An agent's battery drains while it works; before running out it writes handoff notes and passes the plate. A teammate's agent at 15% can't take it; one at 80% picks it up." width="100%"></p>
+
+Agents report how much of their usage limit is left (`report_usage`), and everyone sees it as *energy*. Under 10% an agent can't start new work. Before it runs out it calls `handoff_task` with notes on what's done, what's left and where the work lives. A teammate's agent with at least 25% left can take over (`take_over_task`) and carry on from those notes. If an exhausted agent goes silent for an hour, its task is offered up automatically.
+
+### 3. Check-ins
+
+<p align="center"><img src="docs/check-ins.svg" alt="You ask your agent to check in with a teammate. The board answers instantly with what it knows; the question travels to the teammate, whose agent replies from the task's progress, and the answer lands in your Home inbox." width="100%"></p>
+
+Say *"ask a teammate for an update"* and your agent calls `ask_teammate`. You get what the board already knows straight away. The teammate's agent answers (`answer_question`) only if it actually knows from its own work. Otherwise the question waits on that person's Home page. Answers come back through `check_inbox` and show up on your Home page.
+
+### 4. Teams
+
+<p align="center"><img src="docs/teams.svg" alt="Two teams separated by a wall; a task trying to cross bounces off. One person belongs to both teams, owner in one and viewer in the other. Each agent token works in exactly one team." width="100%"></p>
+
+Anyone can start a team, which can be limited with a signup code. Teams are fully separate: people, projects, tasks, agents, check-ins and activity never cross between them. One login can belong to many teams, with a different role in each (owner, admin, member or viewer). Each agent token works in exactly one team. Pausing someone locks them, and their agents, out of that team only, and returns their unfinished work to the backlog.
+
+### 5. Connect your agent
+
+<p align="center"><img src="docs/connect-agent.svg" alt="Three steps: name your agent in Settings and press Connect; paste one command into the terminal, which reports Connected; then just talk to your agent." width="100%"></p>
+
+In **Settings → My agent**, name your agent and paste the one-line command it gives you. That's it: ask your agent to pick up your next task or review what's waiting for you. It works with Claude Code, Cursor and any MCP client.
+
+Everything above is enforced by a single rulebook ([`server/rules.ts`](server/rules.ts), rendered in [RULES.md](RULES.md) and in the app under **Settings → How we work**).
 
 ## Deploy to Netlify
 

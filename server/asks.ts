@@ -1,4 +1,4 @@
-// Check-ins (Q1–Q4): "hey agent, ask Mubeen if she listed the apps in the directory".
+// Check-ins (Q1–Q4): "hey agent, ask <teammate> for an update on <task>".
 import { randomUUID } from 'node:crypto';
 import { one, q } from './db.ts';
 import { LIMITS, RuleError, canWrite, type Actor } from './rules.ts';

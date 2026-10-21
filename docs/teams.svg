@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 350" width="960" height="350" role="img" aria-labelledby="t d">
+  <title id="t">Teams</title>
+  <desc id="d">Two teams side by side, separated by a wall. A task trying to cross from one team to the other bounces off the wall. One person belongs to both teams, with a different role in each. Each agent token works in exactly one team.</desc>
+  <defs>
+    <filter id="wob" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="11"/>
+      <feDisplacementMap in="SourceGraphic" scale="1.5"/>
+    </filter>
+    <g id="bot" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0 -36v-7"/><circle cx="0" cy="-46" r="2.8"/>
+      <rect x="-17" y="-36" width="34" height="27" rx="8" fill="#fff"/>
+      <circle cx="-7" cy="-23" r="2" fill="#111" stroke="none"/><circle cx="7" cy="-23" r="2" fill="#111" stroke="none"/>
+      <path d="M-5 -16c3 2 7 2 10 0"/>
+      <path d="M-20 4c1-8 7-12 20-12s19 4 20 12"/>
+    </g>
+    <g id="mini"><rect x="-30" y="-18" width="60" height="36" rx="7" fill="#fff" stroke="#111" stroke-width="1.4"/><rect x="-21" y="-10" width="28" height="4.5" rx="2" fill="#111"/><path d="M-21 3h34M-21 10h24" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/></g>
+    <g id="key" fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round"><circle cx="-6" cy="0" r="5" fill="#fde68a"/><path d="M-1 0h13M8 0v4M11 0v3"/></g>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #111; }
+    .muted { fill: #6b7280; }
+    .sk { filter: url(#wob); }
+    .a { animation-duration: 12s; animation-iteration-count: infinite; animation-timing-function: cubic-bezier(.45,0,.25,1); }
+    .stray { animation-name: stray; }
+    @keyframes stray {
+      0%,6% { transform: translate(330px,200px); }
+      16% { transform: translate(418px,200px); }
+      18% { transform: translate(404px,200px); }
+      20% { transform: translate(414px,200px); }
+      30%,100% { transform: translate(330px,200px); }
+    }
+    .wall { animation-name: wall; }
+    @keyframes wall { 0%,15% { stroke: #111; } 17%,24% { stroke: #ef4444; } 28%,100% { stroke: #111; } }
+    .no { transform-box: fill-box; transform-origin: center; animation-name: no; }
+    @keyframes no { 0%,15% { transform: scale(0); } 18% { transform: scale(1.2); } 21%,27% { transform: scale(1); } 30%,100% { transform: scale(0); } }
+    .walker { animation-name: walker; }
+    @keyframes walker {
+      0%,34% { transform: translate(480px,112px); }
+      42%,56% { transform: translate(250px,112px); }
+      64%,80% { transform: translate(710px,112px); }
+      88%,100% { transform: translate(480px,112px); }
+    }
+    .role { transform-box: fill-box; transform-origin: center; }
+    .r1 { animation-name: r1; } .r2 { animation-name: r2; }
+    @keyframes r1 { 0%,42% { transform: scale(0); } 45% { transform: scale(1.15); } 47%,56% { transform: scale(1); } 59%,100% { transform: scale(0); } }
+    @keyframes r2 { 0%,64% { transform: scale(0); } 67% { transform: scale(1.15); } 69%,80% { transform: scale(1); } 83%,100% { transform: scale(0); } }
+    .glowA { animation-name: glowA; } .glowB { animation-name: glowB; }
+    @keyframes glowA { 0%,40% { fill: #fff; } 43%,57% { fill: #eaf4e1; } 60%,100% { fill: #fff; } }
+    @keyframes glowB { 0%,62% { fill: #fff; } 65%,80% { fill: #f3e8ff; } 83%,100% { fill: #fff; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+
+  <rect width="960" height="350" rx="22" fill="#faf8f4"/>
+  <text x="40" y="50" font-size="22" font-weight="700" letter-spacing="-0.5">Teams</text>
+  <text x="40" y="74" font-size="14" class="muted">Many teams, one app. Nothing crosses between teams — but one person can belong to several.</text>
+
+  <!-- team trays -->
+  <g class="sk">
+    <rect class="glowA a" x="40" y="138" width="410" height="168" rx="18" stroke="#111" stroke-width="1.5" fill="#fff"/>
+    <rect class="glowB a" x="510" y="138" width="410" height="168" rx="18" stroke="#111" stroke-width="1.5" fill="#fff"/>
+  </g>
+  <text x="60" y="164" font-size="14" font-weight="700">Team A</text>
+  <text x="530" y="164" font-size="14" font-weight="700">Team B</text>
+  <text x="60" y="296" font-size="11.5" class="muted">people · projects · tasks · agents · check-ins</text>
+  <text x="530" y="296" font-size="11.5" class="muted">people · projects · tasks · agents · check-ins</text>
+
+  <!-- contents -->
+  <g class="sk">
+    <use href="#mini" transform="translate(110 210)"/><use href="#mini" transform="translate(190 236)"/>
+    <use href="#bot" transform="translate(270 262) scale(.75)"/>
+    <use href="#mini" transform="translate(600 210)"/><use href="#mini" transform="translate(690 236)"/><use href="#mini" transform="translate(780 206)"/>
+    <use href="#bot" transform="translate(860 262) scale(.75)"/>
+    <use href="#key" transform="translate(300 230)"/><use href="#key" transform="translate(890 230)"/>
+  </g>
+  <text x="290" y="252" font-size="10.5" class="muted">token: A only</text>
+  <text x="836" y="252" font-size="10.5" class="muted" text-anchor="end">token: B only</text>
+
+  <!-- the wall -->
+  <path class="wall a" d="M480 128V316" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 8"/>
+  <g class="no a"><circle cx="480" cy="196" r="13" fill="#fee2e2" stroke="#111" stroke-width="1.4"/><path d="M475 191l10 10M485 191l-10 10" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round"/></g>
+
+  <!-- a task that tries to wander across -->
+  <g class="stray a"><g class="sk"><use href="#mini"/></g></g>
+
+  <!-- one person, two teams -->
+  <g class="walker a"><g class="sk">
+    <circle cx="0" cy="-12" r="11" fill="#fff" stroke="#111" stroke-width="1.8"/>
+    <path d="M-4 -13h.1M4 -13h.1" stroke="#111" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M-4 -7c2.5 2 5.5 2 8 0" fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M-18 16c1-9 8-13 18-13s17 4 18 13" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+    <g class="role r1 a"><rect x="18" y="-26" width="58" height="22" rx="11" fill="#d9edc9" stroke="#111" stroke-width="1.2"/><text x="47" y="-11" font-size="11.5" font-weight="700" text-anchor="middle">owner</text></g>
+    <g class="role r2 a"><rect x="18" y="-26" width="58" height="22" rx="11" fill="#f3e8ff" stroke="#111" stroke-width="1.2"/><text x="47" y="-11" font-size="11.5" font-weight="700" text-anchor="middle">viewer</text></g>
+  </g>
+  <text x="480" y="334" font-size="12.5" text-anchor="middle" class="muted">One login, many teams — a different role in each. Every agent token works in exactly one team.</text>
+</svg>
