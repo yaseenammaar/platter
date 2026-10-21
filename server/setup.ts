@@ -62,10 +62,33 @@ export function macScript(origin: string, mcpUrl: string, token: string, name: s
 #   2. ~/.platter/checkin.py, the same script as scripts/checkin.py in the Platter repo, run by a
 #      LaunchAgent every 5 minutes: reports energy, answers teammates' questions
 #   3. Claude Code hooks for the owner's focus lock, energy after task steps and the action log
+# If they're missing, it first installs what it needs: Apple's Command Line Tools (python3) and the
+# Claude Code command line, with Anthropic's official installer (https://claude.ai/install.sh).
 # Undo all of it: python3 ~/.platter/checkin.py --uninstall && claude mcp remove platter -s user
 set -e
-command -v claude >/dev/null 2>&1 || { echo "Claude Code isn't installed (no 'claude' command). Install it, then make a new setup link in Platter."; exit 1; }
-command -v python3 >/dev/null 2>&1 || { echo "python3 is missing. Run 'xcode-select --install', then make a new setup link in Platter."; exit 1; }
+[ "$(uname)" = Darwin ] || { echo "This setup is for macOS. In Platter, pick the Windows / Linux setup line instead."; exit 1; }
+# Where Anthropic's installer puts claude; also on PATH for this run, right after installing it.
+export PATH="$HOME/.local/bin:$PATH"
+
+echo "Checking what this Mac needs…"
+# /usr/bin/python3 is only a stub until the Command Line Tools are in (the check-in runs it).
+if ! xcode-select -p >/dev/null 2>&1; then
+  echo "   Installing Apple's Command Line Tools (for python3): click Install in the window that opens. This can take a few minutes."
+  xcode-select --install >/dev/null 2>&1 || true
+  n=0
+  until xcode-select -p >/dev/null 2>&1; do
+    n=$((n + 1))
+    [ "$n" -gt 360 ] && { echo "The Command Line Tools didn't finish installing. Install them with 'xcode-select --install', then make a new setup link in Platter."; exit 1; }
+    sleep 5
+  done
+fi
+echo "   python3: ok"
+if ! command -v claude >/dev/null 2>&1; then
+  echo "   Installing the Claude Code command line…"
+  curl -fsSL https://claude.ai/install.sh | bash >/dev/null || { echo "Couldn't install Claude Code. Install it from https://claude.ai/install.sh, then make a new setup link in Platter."; exit 1; }
+  command -v claude >/dev/null 2>&1 || { echo "Claude Code installed, but the 'claude' command isn't in $HOME/.local/bin. Open a new Terminal and make a new setup link in Platter."; exit 1; }
+fi
+echo "   claude: ok ($(claude --version </dev/null 2>/dev/null | head -1))"
 PLATTER_URL=${sh(mcpUrl)}
 PLATTER_KEY=${sh(token)}
 export PLATTER_URL PLATTER_KEY
@@ -125,6 +148,10 @@ curl -fsSL ${sh(`${origin}/checkin.py`)} -o "$HOME/.platter/checkin.py"
 python3 "$HOME/.platter/checkin.py" --install </dev/null
 echo ""
 echo "Done. Platter is connected. Back in Platter, step 2 turns green."
+# The check-in reads energy with 'claude -p /usage', which needs Claude Code signed in.
+if ! perl -e 'alarm 90; exec @ARGV' claude -p /usage </dev/null 2>/dev/null | grep -q '% used'; then
+  echo "One last step: open Terminal, run 'claude' and sign in. Until then the check-in can't report your energy."
+fi
 echo "Restart Claude Code (quit the app, or open new sessions): sessions already open keep the old key."
 `;
 }
