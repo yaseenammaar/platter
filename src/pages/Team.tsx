@@ -44,11 +44,11 @@ export function TeamPage() {
       <ErrorBox error={a.error} />
 
       <div className="people-grid">
-        {members.map((m) => {
+        {members.map((m, idx) => {
           const agents = (capacity.data?.agents ?? []).filter((x) => x.member_id === m.id);
           const busy = (m.in_progress ?? 0) >= 3 || (m.to_review ?? 0) >= 3;
           return (
-            <div key={m.id} className={`mate ${m.status === 'suspended' ? 'off' : ''}`}>
+            <div key={m.id} className={`mate ${m.status === 'suspended' ? 'off' : ''}`} data-tour={idx === 0 ? 'people' : undefined}>
               <div className="mate-top">
                 <Avatar name={m.name} size={44} />
                 <div className="mate-name">

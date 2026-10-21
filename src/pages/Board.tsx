@@ -79,7 +79,7 @@ export function BoardPage() {
       {data && !data.tasks.length ? (
         <Empty mood="happy">An empty platter! Tap <b>New</b> below to serve up the first task.</Empty>
       ) : (
-        <div className="board">
+        <div className="board" data-tour="board">
           {COLUMNS.map((c, ci) => {
             let items = tasks.filter((t) => (c.statuses as readonly string[]).includes(t.status));
             // Drafts sink to the bottom of To do; Done shows the most recent few.

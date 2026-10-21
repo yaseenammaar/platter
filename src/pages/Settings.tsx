@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { api, type Member, type Project, href } from '../api';
 import { openTour } from '../Onboarding';
@@ -13,7 +13,7 @@ export function SettingsPage() {
       <nav className="tabs">
         <NavLink to={href('/settings')} end viewTransition><Sketch name="agent" size={16} /> My agent</NavLink>
         <NavLink to={href('/settings/projects')} viewTransition><Sketch name="folder" size={16} /> Projects</NavLink>
-        <NavLink to={href('/settings/team-rules')} viewTransition><Sketch name="lock" size={16} /> Team rules</NavLink>
+        <NavLink to={href('/settings/team-rules')} viewTransition data-tour="team-rules"><Sketch name="lock" size={16} /> Team rules</NavLink>
         <NavLink to={href('/settings/rules')} viewTransition><Sketch name="scroll" size={16} /> How we work</NavLink>
       </nav>
       <Routes>
@@ -43,15 +43,27 @@ function AgentSetup() {
   const { me } = useApp();
   const a = useAction();
   const [name, setName] = useState('Claude Code');
-  const [created, setCreated] = useState<{ token: string; mcpUrl: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string; token: string; mcpUrl: string } | null>(null);
   const [client, setClient] = useState<'claude' | 'other'>('claude');
+  const [verified, setVerified] = useState<'no' | 'yes' | 'skipped'>('no');
   const tokens = useLoad(() => api.get<{ tokens: any[] }>(`/agent-tokens${isAdmin(me) ? '?all=1' : ''}`), []);
   const capacity = useLoad(() => api.get<{ agents: any[] }>('/capacity'), []);
 
   const create = (e: FormEvent) => {
     e.preventDefault();
-    a.run(async () => { setCreated(await api.post('/agent-tokens', { name })); tokens.reload(); capacity.reload(); });
+    a.run(async () => { setCreated(await api.post('/agent-tokens', { name })); setVerified('no'); tokens.reload(); capacity.reload(); });
   };
+  // Step 2 is done when Platter hears from the new token: its first MCP call stamps last_used_at.
+  useEffect(() => {
+    if (!created || verified !== 'no') return;
+    const check = async () => {
+      const r = await api.get<{ tokens: any[] }>('/agent-tokens').catch(() => null);
+      const t = r?.tokens.find((x) => x.id === created.id);
+      if (t?.last_used_at) { setVerified('yes'); toast(`${t.name} is connected`, true); tokens.reload(); capacity.reload(); }
+    };
+    const id = setInterval(() => document.visibilityState === 'visible' && check(), 3000);
+    return () => clearInterval(id);
+  }, [created, verified]); // eslint-disable-line react-hooks/exhaustive-deps
   const revoke = (id: string, n: string) => {
     if (!confirm(`Disconnect "${n}"? It stops working right away.`)) return;
     a.run(async () => { await api.del(`/agent-tokens/${id}`); toast('Disconnected'); tokens.reload(); });
@@ -60,9 +72,8 @@ function AgentSetup() {
   const url = created?.mcpUrl ?? `${location.origin}/mcp`;
   const origin = url.replace(/\/mcp$/, '');
   const tok = created?.token ?? 'YOUR_TOKEN';
-  const cmd = client === 'claude'
-    ? `claude mcp add --transport http --scope user platter ${url} --header "Authorization: Bearer ${tok}"`
-    : JSON.stringify({ mcpServers: { platter: { type: 'http', url, headers: { Authorization: `Bearer ${tok}` } } } }, null, 2);
+  const addCmd = `claude mcp add --transport http --scope user platter ${url} --header "Authorization: Bearer ${tok}"`;
+  const otherConfig = JSON.stringify({ mcpServers: { platter: { type: 'http', url, headers: { Authorization: `Bearer ${tok}` } } } }, null, 2);
   const autopilot = `## Platter
 At the start of every session: get my exact usage by running \`claude -p "/usage"\`, then call Platter report_usage with the highest "% used" as used_percent (Platter rounds to the nearest 5%). Then check_inbox and find_work.
 Work tasks through Platter and submit proof for every "done when" item. Before you run out of usage mid-task, use handoff_task.
@@ -72,13 +83,18 @@ When I say "ask <person> …", use ask_teammate. Teammates' questions in check_i
   const logHook = `b=$(head -c 2000); printf '%s' "$b" | curl -fsS -m 3 -X POST ${auth} -H 'content-type: application/json' --data-binary @- ${origin}/api/agent/log >/dev/null 2>&1 &`;
   const cmdHook = (command: string) => [{ hooks: [{ type: 'command', command }] }];
   const hooks = JSON.stringify({ hooks: { SessionStart: cmdHook(focusHook), UserPromptSubmit: cmdHook(focusHook), PostToolUse: cmdHook(logHook) } }, null, 2);
-  // One paste does the rest: the team-rules hooks plus the 30-minute check-in.
-  const setup = `Set up Platter in Claude Code for me. Do both steps, then tell me in one line what you did.
+  // One paste does everything: connect, check, team-rules hooks, and the 30-minute check-in.
+  const setup = `Set up Platter in Claude Code for me. Do these four steps in order, then tell me in one line what you did.
 
-1. Team rules: add these hooks to ~/.claude/settings.json. Merge them into any "hooks" already there and keep everything else as it is. If a hook that calls ${origin}/api/agent is already there, replace it rather than adding a second one. They make the owner's focus lock and action log work here, and cost no tokens.
+1. Connect: run this in a shell. If it says "platter" already exists, run \`claude mcp remove platter -s user\` first, then run it again.
+${addCmd}
+
+2. Check: run \`claude mcp list\` and make sure platter shows as connected. That is also how Platter knows the setup worked.
+
+3. Team rules: add these hooks to ~/.claude/settings.json. Merge them into any "hooks" already there and keep everything else as it is. If a hook that calls ${origin}/api/agent is already there, replace it rather than adding a second one. They make the owner's focus lock and action log work here, and cost no tokens.
 ${hooks}
 
-2. Check-in: schedule this every 30 minutes. Use your scheduling tool; in a terminal session without one, run it with /loop 30m.
+4. Check-in: schedule this every 30 minutes. Use your scheduling tool; in a terminal session without one, run it with /loop 30m.
 
 ${ROUTINE_PROMPT}`;
 
@@ -89,7 +105,7 @@ ${ROUTINE_PROMPT}`;
 
   return (
     <div className="stack">
-      <div className="steps">
+      <div className="steps" data-tour="agent-setup">
         <div className="step">
           <span className="step-n">1</span>
           <div className="step-body">
@@ -98,48 +114,64 @@ ${ROUTINE_PROMPT}`;
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Claude Code – laptop" />
               <button className="btn primary" disabled={a.busy || name.trim().length < 3}>Connect</button>
             </form>
-            {created && <div className="ok-note with-icon"><Sketch name="key" size={16} /> Connected! The command below has your key in it. Copy it now — we won't show the key again.</div>}
+            {created && <div className="ok-note with-icon"><Sketch name="key" size={16} /> Key made! It's in the setup below. Copy it now, because we won't show it again.</div>}
           </div>
         </div>
-        <div className="step">
-          <span className="step-n">2</span>
-          <div className="step-body">
-            <b>Paste this in your terminal</b>
-            <div className="chips">
-              <button className={`toggle ${client === 'claude' ? 'on' : ''}`} onClick={() => setClient('claude')}>Claude Code</button>
-              <button className={`toggle ${client === 'other' ? 'on' : ''}`} onClick={() => setClient('other')}>Cursor & others</button>
+        {created && (
+          <div className={`step rise ${verified !== 'no' ? 'done' : ''}`}>
+            <span className="step-n">{verified !== 'no' ? <Sketch name="check" size={14} /> : 2}</span>
+            <div className="step-body">
+              <b>{client === 'claude' ? 'Paste this into Claude Code' : 'Add Platter to your agent'}</b>
+              <div className="chips">
+                <button className={`toggle ${client === 'claude' ? 'on' : ''}`} onClick={() => setClient('claude')}>Claude Code</button>
+                <button className={`toggle ${client === 'other' ? 'on' : ''}`} onClick={() => setClient('other')}>Cursor & others</button>
+              </div>
+              {client === 'claude' ? (
+                <>
+                  <p className="muted small">
+                    One paste does it all: connects Platter, checks the connection, adds the hooks for your owner's focus lock and action log (they cost no tokens),
+                    and schedules a check-in every 30 minutes that updates your energy, answers teammates' questions and tells you what's new.
+                  </p>
+                  <div className="code tall"><pre>{setup}</pre><Copy text={setup} label="Copy setup" /></div>
+                </>
+              ) : (
+                <>
+                  <p className="muted small">Add this to your agent's MCP settings, then start a new chat so it connects.</p>
+                  <div className="code"><pre>{otherConfig}</pre><Copy text={otherConfig} /></div>
+                </>
+              )}
+              {verified === 'no' ? (
+                <div className="verify with-icon">
+                  <span className="verify-dot" /> Waiting for your agent to say hello…
+                  <span className="spacer" />
+                  <button type="button" className="link-btn small" onClick={() => setVerified('skipped')}>Skip the check</button>
+                </div>
+              ) : verified === 'yes' ? (
+                <div className="ok-note with-icon"><Sketch name="check" size={16} /> Verified! Platter just heard from {created && name.trim()}.</div>
+              ) : (
+                <div className="muted small with-icon"><Sketch name="hourglass" size={14} /> Skipped the check. Your agent shows as active below once it connects.</div>
+              )}
             </div>
-            <div className="code"><pre>{cmd}</pre><Copy text={cmd} /></div>
           </div>
-        </div>
-        <div className="step">
-          <span className="step-n">3</span>
-          <div className="step-body">
-            <b>Just talk to it</b>
-            <ul className="say-list">
-              <li>“Pick up my next Platter task”</li>
-              <li>“Review the tasks waiting for me”</li>
-              <li>“Ask a teammate for an update on their task”</li>
-            </ul>
-            <details className="more">
-              <summary>Make it automatic (recommended)</summary>
-              <p className="muted small">Add this to your CLAUDE.md so your agent shares its energy, checks messages and finds work on its own.</p>
-              <div className="code"><pre>{autopilot}</pre><Copy text={autopilot} /></div>
-            </details>
+        )}
+        {created && verified !== 'no' && (
+          <div className="step rise">
+            <span className="step-n">3</span>
+            <div className="step-body">
+              <b>Just talk to it</b>
+              <ul className="say-list">
+                <li>“Pick up my next Platter task”</li>
+                <li>“Review the tasks waiting for me”</li>
+                <li>“Ask a teammate for an update on their task”</li>
+              </ul>
+              <details className="more">
+                <summary>Make it automatic (recommended)</summary>
+                <p className="muted small">Add this to your CLAUDE.md so your agent shares its energy, checks messages and finds work on its own.</p>
+                <div className="code"><pre>{autopilot}</pre><Copy text={autopilot} /></div>
+              </details>
+            </div>
           </div>
-        </div>
-        <div className="step">
-          <span className="step-n">4</span>
-          <div className="step-body">
-            <b>Keep it running: one paste</b>
-            <p className="muted small">
-              Paste this into Claude Code. It sets up a check-in every 30 minutes that updates your energy, answers teammates' questions and tells you what's new.
-              It also adds the hooks that let your owner's focus lock and action log work. Those cost your agent no tokens.
-            </p>
-            {!created && <p className="small with-icon"><Sketch name="key" size={14} /> Connect in step 1 first, so your key is filled in.</p>}
-            <div className="code tall"><pre>{setup}</pre><Copy text={setup} label="Copy setup" /></div>
-          </div>
-        </div>
+        )}
       </div>
 
       <ErrorBox error={a.error} />
@@ -357,7 +389,7 @@ function TeamRules() {
         {policy.agent_log && <Link to={href('/feed?view=log')} viewTransition className="link-btn small">See the log</Link>}
       </section>
       <p className="muted small">
-        Platter enforces both on its side. To make them reach inside Claude Code too, each person pastes the setup from <Link to={href('/settings')} viewTransition>My agent, step 4</Link>.
+        Platter enforces both on its side. To make them reach inside Claude Code too, each person pastes the setup from <Link to={href('/settings')} viewTransition>My agent, step 2</Link>.
       </p>
       <ErrorBox error={a.error} />
     </div>

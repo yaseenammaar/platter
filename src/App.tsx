@@ -151,7 +151,7 @@ function TeamSwitcher() {
   }, [open]);
   return (
     <div className="switcher" ref={ref}>
-      <button className="brand" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`Platter, team ${team.name}. Switch team`}>
+      <button className="brand" data-tour="team" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`Platter, team ${team.name}. Switch team`}>
         <Logo size={36} />
         <span className="brand-text">
           <span className="brand-name">Platter</span>
@@ -193,14 +193,14 @@ function Dock({ unread }: { unread: number }) {
   return (
     <nav className="dock" aria-label="Main">
       {items.map((i) => (
-        <NavLink key={i.to} to={href(i.to)} end={i.to === '/'} viewTransition className={`dock-item ${active === i.to ? 'on' : ''}`} aria-label={i.label}>
+        <NavLink key={i.to} to={href(i.to)} end={i.to === '/'} viewTransition className={`dock-item ${active === i.to ? 'on' : ''}`} aria-label={i.label} data-tour={`dock-${i.label.toLowerCase()}`}>
           {i.icon ? <Sketch name={i.icon} size={20} /> : <Avatar name={me.name} size={24} />}
           <span className="dock-label">{i.label}</span>
           {i.to === '/' && unread > 0 && <b className="badge">{unread}</b>}
         </NavLink>
       ))}
       {me.role !== 'viewer' && (
-        <NavLink to={href('/new')} viewTransition className="dock-new" aria-label="New task">
+        <NavLink to={href('/new')} viewTransition className="dock-new" aria-label="New task" data-tour="new">
           <Sketch name="plus" size={18} /><span>New</span>
         </NavLink>
       )}

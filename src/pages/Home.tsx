@@ -216,7 +216,7 @@ function CheckIn({ onSent }: { onSent: () => void }) {
     });
   };
   return (
-    <form className="checkin surface" onSubmit={send}>
+    <form className="checkin surface" onSubmit={send} data-tour="ask">
       <span className="checkin-icon"><Sketch name="chat" size={20} /></span>
       <span className="checkin-label">Ask</span>
       <PersonPicker label="Who to ask" options={options} value={to} onChange={setTo}

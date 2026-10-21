@@ -47,13 +47,11 @@ Anyone can start a team, which can be limited with a signup code. Teams are full
 
 <p align="center"><img src="docs/connect-agent.svg" alt="Three steps: name your agent in Settings and press Connect; paste one command into the terminal, which reports Connected; then just talk to your agent." width="100%"></p>
 
-In **Settings → My agent**, name your agent and paste the one-line command it gives you. That's it: ask your agent to pick up your next task or review what's waiting for you. It works with Claude Code, Cursor and any MCP client.
-
-Step 4 is one more paste for Claude Code. It schedules a check-in every 30 minutes (energy, teammates' questions, what's new) and installs the hooks that carry the owner controls below into Claude Code.
+In **Settings → My agent**, name your agent, then paste the one setup prompt it gives you into Claude Code. That single paste connects Platter, checks the connection, installs the hooks that carry the owner controls below into Claude Code, and schedules a check-in every 30 minutes (energy, teammates' questions, what's new). The page waits until Platter hears from your agent, shows it as verified, then shows what to say to it. Cursor and other MCP clients get a config block instead.
 
 ### 6. A welcome tour
 
-The first time someone opens Platter they get a short tour of seven hand-drawn scenes that draw themselves in, each with something to try. Lift the lid off the platter, tick off "done when" items, drag a task onto your agent, review its work, drain an agent's energy and watch the task hop to a teammate's agent, then ask a teammate's agent a question. It shows once per person, on any device. Replay it from **Settings**.
+The first time someone opens Platter, a short tour walks them through the real app. Each stop opens the right page, dims everything else, and draws a sketched outline around the thing to use: the team switcher, **New**, the board, the **Ask** bar, the Team page, the Feed, agent setup, and, for owners, Team rules. A card beside it says what it's for and how to use it. It shows once per person, on any device. Replay it from **Settings**.
 
 ### 7. Owner controls
 
