@@ -452,8 +452,8 @@ async function assertAgentHasCapacity(actor: Actor, min: number, requireReport =
   }
 }
 
-/** Energy is shown in steps of 5% (73 → 75, 68 → 70): precise enough to plan with, without false precision. */
-export const roundToFive = (n: number) => Math.min(100, Math.max(0, Math.round(n / 5) * 5));
+/** Energy is kept exactly as reported, to the whole percent (/usage prints whole numbers). */
+export const toPercent = (n: number) => Math.min(100, Math.max(0, Math.round(n)));
 
 export async function reportUsage(actor: Actor, input: { remaining_percent?: unknown; used_percent?: unknown; resets_at?: unknown; note?: unknown }) {
   if (actor.kind !== 'agent') throw new RuleError('forbidden', 'Only agents report usage', 403);
@@ -462,7 +462,7 @@ export async function reportUsage(actor: Actor, input: { remaining_percent?: unk
     ? 100 - Number(input.used_percent)
     : Number(input.remaining_percent);
   if (!Number.isFinite(raw) || raw < 0 || raw > 100) throw new RuleError('invalid', 'Send remaining_percent (0–100) or used_percent (0–100)');
-  const pct = roundToFive(raw);
+  const pct = toPercent(raw);
   let resets: Date | null = null;
   if (input.resets_at) {
     resets = new Date(String(input.resets_at));

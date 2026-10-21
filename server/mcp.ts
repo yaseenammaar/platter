@@ -18,7 +18,7 @@ const WORKFLOW = `You are connected to Platter, your team's task board. You act 
 
 ## Share your capacity (usage limits)
 - Right after connecting, call \`report_usage\` with how much of your usage limit is left, and report again when you start a task and whenever you drop below ${LIMITS.usageMinToTakeOver}%.
-- Get the real number, don't guess: in Claude Code run \`claude -p "/usage"\` in a shell. Each limit line reads like "Current session: 37% used · resets …". Take the line with the HIGHEST % used and send it as \`used_percent\` (plus \`resets_at\` from that line). Platter rounds to the nearest 5%. Other clients: report your best estimate as \`remaining_percent\`.
+- Get the real number, don't guess: in Claude Code run \`claude -p "/usage"\` in a shell. Each limit line reads like "Current session: 37% used · resets …". Take the line with the HIGHEST % used and send it as \`used_percent\` (plus \`resets_at\` from that line). Platter keeps the exact number. Other clients: report your best estimate as \`remaining_percent\`.
 - Under ${LIMITS.usageExhausted}% you may not start or take over work. If you won't be able to finish your current task, call \`handoff_task\` BEFORE you run out, with notes on what's done, what's left, and where the work lives (branch/PR/files). A teammate's agent with capacity will continue it.
 - If you have capacity and nothing assigned, call \`find_work\`: it lists handoffs from teammates whose agents ran out. \`take_over_task\` makes your person the assignee (needs ≥ ${LIMITS.usageMinToTakeOver}% remaining). Read the handoff notes in \`get_task\` and continue from where they stopped — don't start over.
 
@@ -109,7 +109,7 @@ const TOOLS = [
   },
   {
     name: 'report_usage',
-    description: 'Tell the team how much of your usage limit is left (rounded to the nearest 5%). In Claude Code, read the exact figure from `claude -p "/usage"` and send the tightest limit as used_percent. Call on connect, when starting a task, and when you drop below 25%.',
+    description: 'Tell the team how much of your usage limit is left (the exact percent). In Claude Code, read the exact figure from `claude -p "/usage"` and send the tightest limit as used_percent. Call on connect, when starting a task, and when you drop below 25%.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -64,7 +64,7 @@ test('a teammate with capacity takes over and sees the handoff notes', async () 
   await mcp(people.carol.agent, 'report_usage', { remaining_percent: 70 });
   const work = await mcp(people.carol.agent, 'find_work');
   assert.match(work.text, /APP-1/);
-  assert.match(work.text, /alice-agent.*5% left/); // 3% is shown rounded to the nearest 5
+  assert.match(work.text, /alice-agent.*3% left/); // shown exactly as reported
   const take = await mcp(people.carol.agent, 'take_over_task', { key: 'APP-1' });
   assert.ok(!take.isError, take.text);
   assert.match(take.text, /feat\/csv-export/);
@@ -106,9 +106,10 @@ test('capacity board lists every agent', async () => {
   assert.equal(agents.find((a: any) => a.name === 'carol-agent').state, 'available');
 });
 
-test('energy is rounded to the nearest 5%, from either remaining or used', async () => {
-  assert.match((await mcp(people.bob.agent, 'report_usage', { remaining_percent: 73 })).text, /Recorded 75% remaining/);
-  assert.match((await mcp(people.bob.agent, 'report_usage', { used_percent: 32 })).text, /Recorded 70% remaining/);
-  assert.match((await mcp(people.bob.agent, 'report_usage', { used_percent: 97 })).text, /Recorded 5% remaining/);
+test('energy is kept exactly, from either remaining or used', async () => {
+  assert.match((await mcp(people.bob.agent, 'report_usage', { remaining_percent: 73 })).text, /Recorded 73% remaining/);
+  assert.match((await mcp(people.bob.agent, 'report_usage', { used_percent: 42.6 })).text, /Recorded 57% remaining/);
+  assert.match((await mcp(people.bob.agent, 'report_usage', { used_percent: 32 })).text, /Recorded 68% remaining/);
+  assert.match((await mcp(people.bob.agent, 'report_usage', { used_percent: 97 })).text, /Recorded 3% remaining/);
   assert.ok((await mcp(people.bob.agent, 'report_usage', {})).isError);
 });

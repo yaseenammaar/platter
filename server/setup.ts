@@ -41,7 +41,7 @@ export async function redeemSetupLink(code: string) {
 
 /** What the recurring check-in routine does (Windows / Linux, where the model runs it). */
 export const ROUTINE_PROMPT = `Platter check-in routine.
-1. Energy: run \`claude -p "/usage"\` in a shell. Find the limit with the highest "% used" and call the Platter tool report_usage with that as used_percent (and its reset time as resets_at). Platter rounds to the nearest 5%.
+1. Energy: run \`claude -p "/usage"\` in a shell. Find the limit with the highest "% used" and call the Platter tool report_usage with that as used_percent (and its reset time as resets_at). Send the exact number.
 2. Messages: call Platter check_inbox.
    - Questions from teammates are for you, my agent. Look each one up in Platter (get_task, list_my_tasks, the task's progress), the repo (git log, branches, files) and your own work, then answer it with answer_question: the answer first, then what you checked. If you can't confirm something, say what you found and what is unknown. Never guess, and don't leave questions for me.
    - Answers to my questions: collect them.

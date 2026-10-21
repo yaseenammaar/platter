@@ -73,7 +73,7 @@ function AgentSetup() {
   const config = (t: string) => JSON.stringify({ mcpServers: { platter: { type: 'http', url, headers: { Authorization: `Bearer ${t}` } } } }, null, 2);
   const relink = () => a.run(async () => { setCreated(await api.post(`/agent-tokens/${created!.id}/relink`)); toast('New setup link ready'); });
   const autopilot = `## Platter
-At the start of every session: get my exact usage by running \`claude -p "/usage"\`, then call Platter report_usage with the highest "% used" as used_percent (Platter rounds to the nearest 5%). Then check_inbox and find_work.
+At the start of every session: get my exact usage by running \`claude -p "/usage"\`, then call Platter report_usage with the highest "% used" as used_percent. Then check_inbox and find_work.
 Work tasks through Platter and submit proof for every "done when" item. Before you run out of usage mid-task, use handoff_task.
 When I say "ask <person> …", use ask_teammate. Teammates' questions in check_inbox are for you: look each one up and answer it with answer_question.`;
 
