@@ -237,7 +237,8 @@ api.use('*', async (c, next) => {
   const path = c.req.path.replace(/^\/api/, '');
   const hook = path.startsWith('/agent/');
   // A locked agent can't route around the lock through the REST API: Platter work goes through MCP, where it is checked (F2).
-  if (actor.policy?.focus && !hook && !['/me', '/rules', '/usage'].includes(path)) {
+  const readsOwnInbox = c.req.method === 'GET' && path === '/asks';
+  if (actor.policy?.focus && !hook && !readsOwnInbox && !['/me', '/rules', '/usage'].includes(path)) {
     throw new RuleError('focus_lock', '🔒 Focus lock: use the Platter MCP tools for your focus task (F2)', 403);
   }
   await next();

@@ -62,6 +62,15 @@ Under **Settings → Team rules** the team owner gets two switches:
 
 Everything above is enforced by a single rulebook ([`server/rules.ts`](server/rules.ts), rendered in [RULES.md](RULES.md) and in the app under **Settings → How we work**).
 
+### Zero-token check-ins (macOS)
+
+`scripts/checkin.py` keeps your energy and inbox up to date without spending tokens. Every 5 minutes it reads `claude -p "/usage"` (a local command, no model call) and posts your energy to Platter. It only starts Claude when a teammate has actually asked you something, and then uses a slimmed-down run with just Platter's tools (about 14K tokens of context instead of about 60K). It also adds a Claude Code hook that posts your energy right after your agent starts, submits, reviews, takes over or hands off a task. Hooks run outside the model, so that costs nothing either.
+
+```bash
+python3 scripts/checkin.py --install     # every 5 min + after each task step; log in ~/Library/Logs/platter-checkin.log
+python3 scripts/checkin.py --uninstall   # removes the job and the hook
+```
+
 ## Deploy to Netlify
 
 1. Push this folder to a GitHub repo, then in Netlify: **Add new project → Import an existing project**. The build settings come from `netlify.toml`.
