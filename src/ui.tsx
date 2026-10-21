@@ -19,6 +19,8 @@ export interface AppState {
   rules: any;
   /** Owner controls: the team's action log, and whether my own agents are focus-locked. */
   policy: { agent_log: boolean; agent_focus: boolean; focus_by: string | null };
+  /** Finished (or skipped) the welcome tour. */
+  onboarded: boolean;
   reload: () => Promise<void>;
 }
 export const AppCtx = createContext<AppState>(null as any);

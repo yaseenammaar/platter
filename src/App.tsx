@@ -4,6 +4,7 @@ import { api, href, lastTeam, setTeam, type Team } from './api';
 import { BoardPage } from './pages/Board';
 import { FeedPage } from './pages/Feed';
 import { HomePage } from './pages/Home';
+import { Onboarding, TOUR_EVENT } from './Onboarding';
 import { NewTaskPage } from './pages/NewTask';
 import { SettingsPage } from './pages/Settings';
 import { TaskPage } from './pages/Task';
@@ -65,7 +66,7 @@ function TeamGate({ boot }: { boot: Boot }) {
     try {
       const [me, m, p, r] = await Promise.all([api.get('/me'), api.get('/members'), api.get('/projects'), api.get('/rules')]);
       setState({
-        me: me.me, workspace: me.team.name, team: me.team, teams: boot.teams, policy: me.policy,
+        me: me.me, workspace: me.team.name, team: me.team, teams: boot.teams, policy: me.policy, onboarded: me.onboarded,
         members: m.members, projects: p.projects, rules: r, reload: load,
       });
       setError(null);
@@ -93,6 +94,13 @@ function Shell() {
   const s = useApp();
   const loc = useLocation();
   const inbox = useLoad(() => api.get<{ unread: number }>('/asks/unread'), [s.team.slug], 20_000);
+  // First time here: the welcome tour. Settings can replay it.
+  const [tour, setTour] = useState(!s.onboarded);
+  useEffect(() => {
+    const open = () => setTour(true);
+    window.addEventListener(TOUR_EVENT, open);
+    return () => window.removeEventListener(TOUR_EVENT, open);
+  }, []);
   return (
     <div className="shell">
       <TopBar />
@@ -112,6 +120,7 @@ function Shell() {
       </main>
       <Dock unread={inbox.data?.unread ?? 0} />
       <Toaster />
+      {tour && <Onboarding onClose={() => setTour(false)} />}
     </div>
   );
 }

@@ -51,7 +51,11 @@ In **Settings → My agent**, name your agent and paste the one-line command it 
 
 Step 4 is one more paste for Claude Code. It schedules a check-in every 30 minutes (energy, teammates' questions, what's new) and installs the hooks that carry the owner controls below into Claude Code.
 
-### 6. Owner controls
+### 6. A welcome tour
+
+The first time someone opens Platter they get a short tour of seven hand-drawn scenes that draw themselves in, each with something to try. Lift the lid off the platter, tick off "done when" items, drag a task onto your agent, review its work, drain an agent's energy and watch the task hop to a teammate's agent, then ask a teammate's agent a question. It shows once per person, on any device. Replay it from **Settings**.
+
+### 7. Owner controls
 
 Under **Settings → Team rules** the team owner gets two switches:
 
@@ -83,7 +87,7 @@ Then just tell your agent: *"Pick up my next Platter task"* or *"Review the task
 ```bash
 npm install
 npm run dev        # web on http://localhost:5173, API on :8787 (signup code: local-dev)
-npm test           # 45 end-to-end tests: workflow, rules, MCP, handoffs, check-ins, teams, focus lock, action log
+npm test           # 46 end-to-end tests: workflow, rules, MCP, handoffs, check-ins, teams, focus lock, action log
 ```
 
 Local dev uses an embedded Postgres (PGlite) stored in `.data/`, with the same migration files, so no database setup is needed. To populate two demo teams (you're in both) on a fresh local database:

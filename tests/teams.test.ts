@@ -101,3 +101,13 @@ test('anyone signed in can start another team', async () => {
   const { teams } = await ana.ok('GET', '/api/me/teams');
   assert.equal(teams.length, 2);
 });
+
+test('the welcome tour shows once per person, and only people can dismiss it', async () => {
+  const c = new Client();
+  await startTeam(c, { name: 'New Person', email: 'newbie@x.io', team: 'Fresh Team' });
+  assert.equal((await c.ok('GET', '/api/me')).onboarded, false);
+  await c.ok('POST', '/api/me/onboarded');
+  assert.equal((await c.ok('GET', '/api/me')).onboarded, true);
+  const agent = new Client((await c.ok('POST', '/api/agent-tokens', { name: 'newbie-agent' })).token);
+  assert.equal((await agent.post('/api/me/onboarded')).status, 403);
+});

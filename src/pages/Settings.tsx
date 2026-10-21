@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { api, type Member, type Project, href } from '../api';
+import { openTour } from '../Onboarding';
 import type { SketchName } from '../sketch';
 import { Avatar, Battery, Copy, Empty, ErrorBox, Menu, Pip, Sketch, Switch, Text, firstName, isAdmin, timeAgo, toast, useAction, useApp, useLoad, useTheme, type Theme } from '../ui';
 
@@ -279,6 +280,7 @@ function Appearance() {
           </button>
         ))}
       </div>
+      <button type="button" className="link-btn small replay" onClick={openTour}><Sketch name="sparkle" size={14} /> Replay the welcome tour</button>
     </section>
   );
 }

@@ -247,15 +247,25 @@ api.use('*', async (c, next) => {
 api.get('/me', async (c) => {
   const actor = actorOf(c);
   const p = await one(
-    `SELECT w.agent_log, m.agent_focus, fb.name AS focus_by FROM workspaces w
+    `SELECT w.agent_log, m.agent_focus, fb.name AS focus_by, u.onboarded_at FROM workspaces w
        JOIN memberships m ON m.workspace_id = w.id AND m.user_id = $2
+       JOIN users u ON u.id = m.user_id
        LEFT JOIN users fb ON fb.id = m.agent_focus_by WHERE w.id = $1`,
     [actor.workspace.id, actor.member.id],
   );
   return c.json({
     me: actor.member, agent: actor.agent ?? null, team: actor.workspace,
     policy: { agent_log: !!p?.agent_log, agent_focus: !!p?.agent_focus, focus_by: p?.focus_by ?? null },
+    onboarded: !!p?.onboarded_at,
   });
+});
+
+/** The welcome tour was finished or skipped: don't show it again, on any device. */
+api.post('/me/onboarded', async (c) => {
+  const actor = actorOf(c);
+  requireHuman(actor);
+  await q('UPDATE users SET onboarded_at = coalesce(onboarded_at, now()) WHERE id = $1', [actor.member.id]);
+  return c.json({ ok: true });
 });
 
 api.patch('/team', async (c) => {
