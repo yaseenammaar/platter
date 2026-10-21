@@ -57,6 +57,12 @@ const addCmd = (mcpUrl: string, token: string) =>
 export function macScript(origin: string, mcpUrl: string, token: string, name: string) {
   return `#!/bin/sh
 # Platter setup for "${name.replace(/[^\w .'-]/g, '')}". This link has now been used and won't work again.
+# The full setup, as asked for in Platter's setup line:
+#   1. the "platter" MCP server in Claude Code (user scope), replacing any old Platter keys
+#   2. ~/.platter/checkin.py, the same script as scripts/checkin.py in the Platter repo, run by a
+#      LaunchAgent every 5 minutes: reports energy, answers teammates' questions
+#   3. Claude Code hooks for the owner's focus lock, energy after task steps and the action log
+# Undo all of it: python3 ~/.platter/checkin.py --uninstall && claude mcp remove platter -s user
 set -e
 command -v claude >/dev/null 2>&1 || { echo "Claude Code isn't installed (no 'claude' command). Install it, then make a new setup link in Platter."; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is missing. Run 'xcode-select --install', then make a new setup link in Platter."; exit 1; }
@@ -130,7 +136,7 @@ export function setupPrompt(origin: string, mcpUrl: string, token: string) {
   const logHook = `b=$(head -c 2000); printf '%s' "$b" | curl -fsS -m 3 -X POST ${auth} -H 'content-type: application/json' --data-binary @- ${origin}/api/agent/log >/dev/null 2>&1 &`;
   const cmdHook = (command: string) => [{ hooks: [{ type: 'command', command }] }];
   const hooks = JSON.stringify({ hooks: { SessionStart: cmdHook(focusHook), UserPromptSubmit: cmdHook(focusHook), PostToolUse: cmdHook(logHook) } }, null, 2);
-  return `Platter setup steps. Do these four steps in order, then tell me in one line what you did. (This setup link has now been used and won't work again.)
+  return `Platter setup steps. I want the full setup: do all four steps in order without stopping to ask which ones, then tell me in one line what you did. (This setup link has now been used and won't work again.)
 
 1. Connect: run this in a shell. If it says "platter" already exists, run \`claude mcp remove platter -s user\` first, then run it again.
 ${addCmd(mcpUrl, token)}

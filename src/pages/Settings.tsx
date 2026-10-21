@@ -66,8 +66,8 @@ function AgentSetup() {
   const tok = created?.token ?? '';
   // One short line; the link returns the full setup (with the key) once, then stops working.
   const link = (code: string) => `${origin}/s/${code}`;
-  const macLine = (code: string) => `Set up Platter for me by running: curl -fsSL ${link(code)} | sh`;
-  const otherLine = (code: string) => `Set up Platter for me: run curl -fsSL "${link(code)}?as=prompt" and follow the steps it prints.`;
+  const macLine = (code: string) => `Set up Platter for me, all of it (connection, background check-in and hooks), by running: curl -fsSL ${link(code)} | sh`;
+  const otherLine = (code: string) => `Set up Platter for me, all of it: run curl -fsSL "${link(code)}?as=prompt" and do every step it prints.`;
   const HIDDEN = '••••••••';
   const line = client === 'mac' ? macLine : otherLine;
   const config = (t: string) => JSON.stringify({ mcpServers: { platter: { type: 'http', url, headers: { Authorization: `Bearer ${t}` } } } }, null, 2);
