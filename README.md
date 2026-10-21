@@ -66,9 +66,11 @@ Everything above is enforced by a single rulebook ([`server/rules.ts`](server/ru
 
 `scripts/checkin.py` keeps your energy and inbox up to date without spending tokens. Every 5 minutes it reads `claude -p "/usage"` (a local command, no model call) and posts your energy to Platter. It only starts Claude when a teammate has actually asked you something, and then uses a slimmed-down run with just Platter's tools (about 14K tokens of context instead of about 60K). It also adds a Claude Code hook that posts your energy right after your agent starts, submits, reviews, takes over or hands off a task. Hooks run outside the model, so that costs nothing either.
 
+On a Mac, **Settings → My agent** sets this up for you. Its one setup paste connects Platter, then downloads the script from your Platter site (`/checkin.py`, built from `scripts/checkin.py`) and installs it. It also carries the owner's focus lock into every prompt, and the action log into every tool call. Windows and Linux get the scheduled-routine setup instead.
+
 ```bash
-python3 scripts/checkin.py --install     # every 5 min + after each task step; log in ~/Library/Logs/platter-checkin.log
-python3 scripts/checkin.py --uninstall   # removes the job and the hook
+python3 ~/.platter/checkin.py --install     # or from the repo: python3 scripts/checkin.py --install
+python3 ~/.platter/checkin.py --uninstall   # lists exactly what it removed
 ```
 
 ## Deploy to Netlify

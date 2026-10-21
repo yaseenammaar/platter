@@ -42,7 +42,8 @@ function AgentSetup() {
   const a = useAction();
   const [name, setName] = useState('Claude Code');
   const [created, setCreated] = useState<{ id: string; token: string; mcpUrl: string } | null>(null);
-  const [client, setClient] = useState<'claude' | 'other'>('claude');
+  // Macs get the free background check-in; everyone else the scheduled routine.
+  const [client, setClient] = useState<'mac' | 'claude' | 'other'>(() => (/Mac/i.test(navigator.userAgent) ? 'mac' : 'claude'));
   const [verified, setVerified] = useState<'no' | 'yes' | 'skipped'>('no');
   const tokens = useLoad(() => api.get<{ tokens: any[] }>(`/agent-tokens${isAdmin(me) ? '?all=1' : ''}`), []);
   const capacity = useLoad(() => api.get<{ agents: any[] }>('/capacity'), []);
@@ -81,7 +82,17 @@ When I say "ask <person> …", use ask_teammate. Teammates' questions in check_i
   const logHook = `b=$(head -c 2000); printf '%s' "$b" | curl -fsS -m 3 -X POST ${auth} -H 'content-type: application/json' --data-binary @- ${origin}/api/agent/log >/dev/null 2>&1 &`;
   const cmdHook = (command: string) => [{ hooks: [{ type: 'command', command }] }];
   const hooks = JSON.stringify({ hooks: { SessionStart: cmdHook(focusHook), UserPromptSubmit: cmdHook(focusHook), PostToolUse: cmdHook(logHook) } }, null, 2);
-  // One paste does everything: connect, check, team-rules hooks, and the 30-minute check-in.
+  // Mac: connect, check, then Platter's own check-in script (energy for free, the model only for questions).
+  const macSetup = `Set up Platter in Claude Code for me. Do these three steps in order, then tell me in one line what you did.
+
+1. Connect: run this in a shell. If it says "platter" already exists, run \`claude mcp remove platter -s user\` first, then run it again.
+${addCmd}
+
+2. Check: run \`claude mcp list\` and make sure platter shows as connected. That is also how Platter knows the setup worked.
+
+3. Free background check-in: run this in a shell. It downloads Platter's check-in script and installs it, then tell me what it printed.
+mkdir -p ~/.platter && curl -fsSL ${origin}/checkin.py -o ~/.platter/checkin.py && python3 ~/.platter/checkin.py --install`;
+  // Windows / Linux: connect, check, team-rules hooks, and the 30-minute check-in run by the model.
   const setup = `Set up Platter in Claude Code for me. Do these four steps in order, then tell me in one line what you did.
 
 1. Connect: run this in a shell. If it says "platter" already exists, run \`claude mcp remove platter -s user\` first, then run it again.
@@ -119,12 +130,23 @@ ${ROUTINE_PROMPT}`;
           <div className={`step rise ${verified !== 'no' ? 'done' : ''}`}>
             <span className="step-n">{verified !== 'no' ? <Sketch name="check" size={14} /> : 2}</span>
             <div className="step-body">
-              <b>{client === 'claude' ? 'Paste this into Claude Code' : 'Add Platter to your agent'}</b>
+              <b>{client === 'other' ? 'Add Platter to your agent' : 'Paste this into Claude Code'}</b>
               <div className="chips">
-                <button className={`toggle ${client === 'claude' ? 'on' : ''}`} onClick={() => setClient('claude')}>Claude Code</button>
+                <button className={`toggle ${client === 'mac' ? 'on' : ''}`} onClick={() => setClient('mac')}>Claude Code · Mac</button>
+                <button className={`toggle ${client === 'claude' ? 'on' : ''}`} onClick={() => setClient('claude')}>Claude Code · Windows / Linux</button>
                 <button className={`toggle ${client === 'other' ? 'on' : ''}`} onClick={() => setClient('other')}>Cursor & others</button>
               </div>
-              {client === 'claude' ? (
+              {client === 'mac' ? (
+                <>
+                  <p className="muted small">
+                    One paste does it all: connects Platter, checks the connection, and installs a free background check-in.
+                    It reports your energy every 5 minutes and right after each task step without using the model, and only wakes Claude when a teammate asks you something.
+                    It also carries your owner's focus lock and one-line action log into Claude Code.
+                  </p>
+                  <div className="code tall"><pre>{macSetup}</pre><Copy text={macSetup} label="Copy setup" /></div>
+                  <p className="muted small">To remove it later: <code>python3 ~/.platter/checkin.py --uninstall</code></p>
+                </>
+              ) : client === 'claude' ? (
                 <>
                   <p className="muted small">
                     One paste does it all: connects Platter, checks the connection, adds the hooks for your owner's focus lock and action log (they cost no tokens),

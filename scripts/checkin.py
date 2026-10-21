@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Platter check-in that costs no tokens most of the time. Works with the Python 3.9 that ships with macOS.
+"""Platter check-in that costs no tokens most of the time (macOS + Claude Code).
+
+Works with the Python 3.9 that ships with macOS. Get it from your Platter site:
+  mkdir -p ~/.platter && curl -fsSL <your-platter>/checkin.py -o ~/.platter/checkin.py && python3 ~/.platter/checkin.py --install
 
 Every run:
   1. Energy: reads `claude -p "/usage"` (a local command, no model call) and posts the
@@ -18,6 +21,7 @@ secret is stored here. Settings, all optional:
 Run it by hand to try it:  python3 scripts/checkin.py
 Energy only (what the Claude Code hook runs after a task step):  python3 scripts/checkin.py --energy
 One-line action log (what the hook runs after every tool, if the owner turned the log on):  --log
+Focus lock note (what the hook runs before each prompt; prints nothing unless the owner locked you):  --focus
 Install it (every 5 minutes, macOS, plus the hook):  python3 scripts/checkin.py --install
 Remove it:  python3 scripts/checkin.py --uninstall
 """
@@ -180,6 +184,22 @@ def energy_only() -> None:
             log(f'after a task step · energy failed: {e}')
 
 
+def focus_note() -> None:
+    """SessionStart / UserPromptSubmit hook: print the owner's focus lock, if any, for Claude to see.
+    Prints nothing when unlocked, so it adds no tokens; never fails the prompt."""
+    try:
+        sys.stdin.buffer.read()
+        server = platter_server()
+        base = server['url'].rsplit('/mcp', 1)[0]
+        req = urllib.request.Request(base + '/api/agent/focus')
+        for k, v in (server.get('headers') or {}).items():
+            req.add_header(k, v)
+        with urllib.request.urlopen(req, timeout=3) as r:
+            sys.stdout.write(r.read().decode())
+    except Exception:
+        pass
+
+
 def log_action() -> None:
     """PostToolUse hook: send this tool call to Platter as one line (tool + target), then get out of the way.
 
@@ -230,7 +250,8 @@ def install() -> None:
     # Run a private copy, so moving or deleting the repo doesn't break the schedule.
     STATE.mkdir(exist_ok=True)
     script = STATE / 'checkin.py'
-    shutil.copy(Path(__file__).resolve(), script)
+    if Path(__file__).resolve() != script.resolve():  # installed from Platter, it already lives here
+        shutil.copy(Path(__file__).resolve(), script)
     PLIST.parent.mkdir(parents=True, exist_ok=True)
     env = {'PATH': f'{Path(claude_bin()).parent}:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin'}
     for k in ('PLATTER_MODEL', 'PLATTER_WORKDIR', 'CLAUDE_BIN'):
@@ -251,29 +272,43 @@ def install() -> None:
     subprocess.run(['launchctl', 'unload', str(PLIST)], capture_output=True)
     subprocess.run(['launchctl', 'load', str(PLIST)], check=True)
     set_hooks(script)
-    print(f'Installed: every {INTERVAL // 60} minutes, energy right after each task step, and a one-line log of every action. Log: {LOG}')
+    print(f'Installed. Every {INTERVAL // 60} minutes: energy (free) and teammates\' questions.')
+    print('Also: energy right after each task step, the owner\'s focus lock, and a one-line action log if the owner turned it on.')
+    print(f'Log: {LOG}')
 
 
 def set_hooks(script: Path | None) -> int:
-    """Add (or remove, with None) our PostToolUse hooks in ~/.claude/settings.json, keeping everything else.
+    """Add (or remove, with None) our Claude Code hooks in ~/.claude/settings.json, keeping everything else.
     Returns how many of our hooks were there before."""
     if not script and not SETTINGS.exists():
         return 0
     cfg = json.loads(SETTINGS.read_text()) if SETTINGS.exists() else {}
     hooks = cfg.setdefault('hooks', {})
-    ours = ('checkin.py --energy', 'checkin.py --log')
-    before = hooks.get('PostToolUse', [])
-    groups = [g for g in before if not any(o in h.get('command', '') for h in g.get('hooks', []) for o in ours)]
-    found = len(before) - len(groups)
+    ours = ('checkin.py --energy', 'checkin.py --log', 'checkin.py --focus')
+    wanted: dict[str, list] = {}
+    if script:
+        focus = [{'hooks': [{'type': 'command', 'command': f'{PYTHON} {script} --focus'}]}]
+        wanted = {
+            # The owner's focus lock, in front of every session and prompt (prints nothing when unlocked).
+            'SessionStart': focus,
+            'UserPromptSubmit': focus,
+            'PostToolUse': [
+                {'matcher': TASK_STEPS, 'hooks': [{'type': 'command', 'command': f'{PYTHON} {script} --energy >/dev/null 2>&1 &'}]},
+                {'hooks': [{'type': 'command', 'command': f'{PYTHON} {script} --log'}]},
+            ],
+        }
+    found = 0
+    for event in set(hooks) | set(wanted):
+        before = hooks.get(event, [])
+        groups = [g for g in before if not any(o in h.get('command', '') for h in g.get('hooks', []) for o in ours)]
+        found += len(before) - len(groups)
+        groups += wanted.get(event, [])
+        if groups:
+            hooks[event] = groups
+        else:
+            hooks.pop(event, None)
     if not script and not found:
         return 0  # nothing of ours: leave the file exactly as it is
-    if script:
-        groups.append({'matcher': TASK_STEPS, 'hooks': [{'type': 'command', 'command': f'{PYTHON} {script} --energy >/dev/null 2>&1 &'}]})
-        groups.append({'hooks': [{'type': 'command', 'command': f'{PYTHON} {script} --log'}]})
-    if groups:
-        hooks['PostToolUse'] = groups
-    else:
-        hooks.pop('PostToolUse', None)
     if not hooks:
         cfg.pop('hooks', None)
     SETTINGS.parent.mkdir(parents=True, exist_ok=True)
@@ -310,4 +345,4 @@ def uninstall() -> None:
 
 
 if __name__ == '__main__':
-    {'--install': install, '--uninstall': uninstall, '--energy': energy_only, '--log': log_action}.get(sys.argv[1] if len(sys.argv) > 1 else '', run)()
+    {'--install': install, '--uninstall': uninstall, '--energy': energy_only, '--log': log_action, '--focus': focus_note}.get(sys.argv[1] if len(sys.argv) > 1 else '', run)()
