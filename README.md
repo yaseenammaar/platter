@@ -125,3 +125,9 @@ Already have a demo in that database? Add `DEMO_TAG=2` so the made-up teammates 
 | `src/` | React app: Home, Board, Task, Team, Feed, Settings |
 
 To change a rule, edit `server/rules.ts`, then run `npm test` and `npm run rules:md`.
+
+## License
+
+Platter is **source-available** under the [PolyForm Noncommercial License 1.0.0](LICENSE.md): you can read, run, self-host and change it for any noncommercial purpose (personal use, study, research, hobby projects, charities, schools and the like). **Commercial use is not permitted** under this license. For commercial licensing, open an issue or contact the maintainer.
+
+Platter works with Claude Code and other MCP clients; it is not made or endorsed by Anthropic.
