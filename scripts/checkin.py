@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Sniff Labs LLC. All rights reserved.
 """Platter check-in that costs no tokens most of the time (macOS + Claude Code).
 
 Works with the Python 3.9 that ships with macOS. Get it from your Platter site:
